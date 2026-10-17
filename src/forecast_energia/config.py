@@ -76,3 +76,16 @@ CLIMA_VARIABLES = [
     "cloud_cover",
     "shortwave_radiation",
 ]
+
+# --- Protocolo de evaluación (Fase 3) ----------------------------------------------------
+# Pronóstico day-ahead comparable con el predespacho del CNDC, que se publica con 1–2 días de
+# anticipación: para pronosticar el día D solo se usan datos hasta las 23:00 de D−2 (el
+# "corte"). El modelo pronostica 48 h desde el corte y se evalúan las horas 25–48, que son
+# las del día D.
+HORIZONTE_H = 48
+HORAS_DIA_OBJETIVO = (25, 48)  # horizontes (inclusive) que caen en el día D
+# Fechas fijas para que los resultados sean reproducibles aunque lleguen datos nuevos.
+CALIB_INICIO = "2026-01-16"  # ~3 meses de calibración conformal
+TEST_INICIO = "2026-04-17"  # ~6 meses de test (hasta el último dato)
+NIVELES = (80, 90, 95)  # niveles de los intervalos de predicción (%)
+ESTACIONALIDAD_MASE = 168  # naive semanal como escala de MASE
