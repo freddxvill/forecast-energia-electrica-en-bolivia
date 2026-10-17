@@ -1,0 +1,21 @@
+# Python-generated files
+__pycache__/
+*.py[oc]
+build/
+dist/
+wheels/
+*.egg-info
+
+# Virtual environments
+.venv
+# Playwright CLI output (may contain credentials)
+.playwright-cli/
+
+# Datos crudos (se regeneran con `uv run poe data`)
+data/raw/
+
+# Notebooks / herramientas
+.ipynb_checkpoints/
+.ruff_cache/
+.pytest_cache/
+lightning_logs/

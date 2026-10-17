@@ -1,0 +1,63 @@
+[project]
+name = "forecast-energia"
+version = "0.1.0"
+description = "Forecasting probabilístico de la demanda eléctrica del SIN de Bolivia con datos reales del CNDC."
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "pandas>=2.2",
+    "pyarrow>=17",
+    "requests>=2.32",
+    "tenacity>=9",
+    "holidays>=0.60",
+]
+
+[dependency-groups]
+models = [
+    "statsforecast>=2.0",
+    "mlforecast>=1.0",
+    "lightgbm>=4.5",
+    "neuralforecast>=3.0",
+    "hierarchicalforecast>=1.0",
+    "utilsforecast>=0.2",
+]
+api = ["fastapi>=0.115", "uvicorn>=0.32"]
+app = ["streamlit>=1.40", "plotly>=5.24"]
+dev = [
+    "pytest>=8.3",
+    "ruff>=0.8",
+    "pre-commit>=4.0",
+    "nbstripout>=0.8",
+    "ipykernel>=6.29",
+    "poethepoet>=0.31",
+]
+
+[tool.uv]
+default-groups = ["dev"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/forecast_energia"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+# Warning interno de pandas al importarse con numpy reciente (no es de este código).
+filterwarnings = ["ignore:The 'generic' unit for NumPy timedelta:DeprecationWarning"]
+
+[tool.poe.tasks]
+data = { cmd = "python -m forecast_energia.data.build", help = "Descarga (incremental) CNDC + clima y genera data/processed" }
+refresh = { ref = "data", help = "Alias de data: solo baja los días nuevos y los últimos 3 días" }
+data-offline = { cmd = "python -m forecast_energia.data.build --offline --sin-clima", help = "Reprocesa la caché sin red" }
+test = { cmd = "pytest", help = "Corre los tests" }
+lint = { cmd = "ruff check .", help = "Lint" }
+fmt = { cmd = "ruff format .", help = "Formatea el código" }

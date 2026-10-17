@@ -1,0 +1,19 @@
+# Hooks locales: usan las versiones fijadas en uv.lock (`uv run pre-commit install`).
+repos:
+  - repo: local
+    hooks:
+      - id: ruff-check
+        name: ruff check
+        entry: uv run ruff check --fix
+        language: system
+        types_or: [python, jupyter]
+      - id: ruff-format
+        name: ruff format
+        entry: uv run ruff format
+        language: system
+        types_or: [python, jupyter]
+      - id: nbstripout
+        name: nbstripout (conserva salidas curadas del EDA, limpia metadatos)
+        entry: uv run nbstripout --keep-output
+        language: system
+        files: \.ipynb$
