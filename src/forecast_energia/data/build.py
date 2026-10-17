@@ -6,7 +6,8 @@ Uso:
     uv run python -m forecast_energia.data.build --offline       # solo reprocesa la caché
 
 Salidas (formato largo de Nixtla: `unique_id, ds, y`, con `ds` = inicio de la hora local):
-    demanda_horaria.parquet     8 departamentos + SIN (MW)
+    demanda_horaria.parquet     8 departamentos + SIN (MW): `y` conciliado con TOT,
+                                `y_medido` tal como lo publica el CNDC, `imputado`
     generacion_horaria.parquet  TOT, TERMO, HIDRO, SOLAR, EOL, BAGAZO, RENO, PREV (MW)
     clima_horario.parquet       clima observado y pronosticado el día anterior (`*_d1`)
     calidad.json                faltantes, imputación y chequeos de coherencia
@@ -27,12 +28,42 @@ from forecast_energia.data import cndc, processing, weather
 log = logging.getLogger("forecast_energia.build")
 
 
-def procesar_demanda(raw15: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame]:
+def procesar_demanda(raw15: pd.DataFrame, tot: pd.Series) -> tuple[pd.DataFrame, pd.DataFrame]:
+    """Demanda horaria conciliada con la generación TOT (ver `processing.ajustar_a_tot`).
+
+    El SIN resultante es igual a TOT: tiene una definición constante en todo el periodo y es la
+    misma magnitud que pronostica el CNDC (PREV).
+    """
     dem15 = raw15[raw15["unique_id"].isin(config.DEPARTAMENTO_CODIGOS)]
     dem15 = processing.interpolar_huecos_cortos(processing.completar_grilla(dem15))
-    dem_h = processing.a_horario(dem15)
-    sin = processing.construir_sin(dem_h)
-    return pd.concat([dem_h, sin], ignore_index=True), dem15
+    medido = processing.a_horario(dem15).pivot(index="ds", columns="unique_id", values="y")
+    medido = medido.reindex(columns=config.DEPARTAMENTO_CODIGOS)
+    tot = tot.reindex(medido.index)
+
+    anomalo = processing.detectar_anomalias_departamentales(medido, tot)
+    imputado = anomalo | medido.isna()
+    ajustado = processing.ajustar_a_tot(
+        processing.imputar_por_participacion(medido, tot, anomalo), tot
+    )
+
+    largo = pd.concat(
+        {
+            "y": ajustado.stack(future_stack=True),
+            "y_medido": medido.stack(future_stack=True),
+            "imputado": imputado.stack(future_stack=True),
+        },
+        axis=1,
+    ).reset_index()
+    sin = pd.DataFrame(
+        {
+            "unique_id": config.SIN_ID,
+            "ds": ajustado.index,
+            "y": ajustado.sum(axis=1, min_count=ajustado.shape[1]).to_numpy(),
+            "y_medido": medido.sum(axis=1, min_count=medido.shape[1]).to_numpy(),
+            "imputado": imputado.any(axis=1).to_numpy(),
+        }
+    )
+    return pd.concat([largo, sin], ignore_index=True), dem15
 
 
 def procesar_generacion(raw15: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame]:
@@ -73,8 +104,9 @@ def main(argv: list[str] | None = None) -> None:
         raw_dem = cndc.descargar(config.ENDPOINT_DEMANDA, args.start, args.end)
         raw_gen = cndc.descargar(config.ENDPOINT_GENERACION, args.start, args.end)
 
-    dem_h, dem15 = procesar_demanda(raw_dem)
     gen_h, gen15 = procesar_generacion(raw_gen)
+    tot = gen_h[gen_h["unique_id"] == "TOT"].set_index("ds")["y"]
+    dem_h, dem15 = procesar_demanda(raw_dem, tot)
 
     salidas = {
         "demanda_horaria": dem_h,
@@ -92,8 +124,10 @@ def main(argv: list[str] | None = None) -> None:
             config.PROCESSED_DIR / f"{nombre}.parquet", index=False
         )
 
-    sin = dem_h[dem_h["unique_id"] == config.SIN_ID].set_index("ds")["y"]
-    tot = gen_h[gen_h["unique_id"] == "TOT"].set_index("ds")["y"].reindex(sin.index)
+    sin_df = dem_h[dem_h["unique_id"] == config.SIN_ID].set_index("ds")
+    sin, sin_medido = sin_df["y"], sin_df["y_medido"]
+    tot = tot.reindex(sin.index)
+    cambio = sin.index >= config.CNDC_CAMBIO_DEFINICION_DEMANDA
     prev = (
         gen_h[gen_h["unique_id"] == config.SERIE_PRONOSTICO_CNDC]
         .set_index("ds")["y"]
@@ -106,7 +140,16 @@ def main(argv: list[str] | None = None) -> None:
         "generacion_15min": processing.resumen_calidad(gen15).astype(str).to_dict(orient="index"),
         "demanda_horaria": processing.resumen_calidad(dem_h).astype(str).to_dict(orient="index"),
         "chequeos": {
-            "ratio_sin_vs_generacion_tot": processing.ratio(sin, tot),
+            "ratio_sin_medido_vs_tot_antes_cambio": processing.ratio(
+                sin_medido[~cambio], tot[~cambio]
+            ),
+            "ratio_sin_medido_vs_tot_desde_cambio": processing.ratio(
+                sin_medido[cambio], tot[cambio]
+            ),
+            "ratio_sin_conciliado_vs_tot": processing.ratio(sin, tot),
+            "pct_horas_depto_imputadas": round(
+                100 * float(dem_h.loc[dem_h["unique_id"] != config.SIN_ID, "imputado"].mean()), 3
+            ),
             "ratio_prev_vs_generacion_tot": processing.ratio(prev, tot),
         },
         "tamanos_mb": {p.name: _a_mb(p) for p in sorted(config.PROCESSED_DIR.glob("*.parquet"))},

@@ -1,7 +1,6 @@
 import numpy as np
 import pandas as pd
 
-from forecast_energia import config
 from forecast_energia.data import processing
 
 
@@ -57,10 +56,51 @@ def test_escalon_horario_robusto_a_la_fase():
         np.testing.assert_allclose(out["y"], [5, 7])
 
 
-def test_construir_sin_suma_y_exige_todos_los_deptos():
-    deptos = ["A", "B"]
-    df = pd.concat([_serie([1, 2], "A", freq="h"), _serie([10, np.nan], "B", freq="h")])
-    sin = processing.construir_sin(df, departamentos=deptos)
-    assert (sin["unique_id"] == config.SIN_ID).all()
-    assert sin["y"].iloc[0] == 11
-    assert np.isnan(sin["y"].iloc[1])
+def _deptos_sinteticos(dias=21, seed=0):
+    """Dos departamentos con perfil diario estable y TOT = 1.03 × su suma."""
+    rng = np.random.default_rng(seed)
+    idx = pd.date_range("2024-03-01", periods=24 * dias, freq="h")
+    perfil = 100 + 30 * np.sin(2 * np.pi * idx.hour / 24)
+    dep = pd.DataFrame(
+        {"A": perfil * 3 + rng.normal(0, 2, len(idx)), "B": perfil + rng.normal(0, 1, len(idx))},
+        index=idx,
+    )
+    tot = dep.sum(axis=1) * 1.03
+    return dep, tot
+
+
+def test_ajustar_a_tot_cierra_la_jerarquia():
+    dep, tot = _deptos_sinteticos()
+    ajustado = processing.ajustar_a_tot(dep, tot)
+    np.testing.assert_allclose(ajustado.sum(axis=1), tot)
+    # La participación de cada departamento no cambia
+    np.testing.assert_allclose(ajustado["A"] / ajustado["B"], dep["A"] / dep["B"])
+
+
+def test_detecta_caida_de_un_departamento():
+    dep, tot = _deptos_sinteticos()
+    t = dep.index[24 * 15 + 10]
+    dep.loc[t, "B"] = 0.5  # falla de medición
+    mascara = processing.detectar_anomalias_departamentales(dep, tot)
+    assert mascara.loc[t, "B"]
+    assert mascara.drop(index=t).to_numpy().sum() == 0
+
+
+def test_detecta_hora_incoherente_con_tot():
+    dep, tot = _deptos_sinteticos()
+    t = dep.index[24 * 15 + 10]
+    tot.loc[t] *= 1.2  # Σ deptos / TOT se aleja 17 % de su nivel
+    mascara = processing.detectar_anomalias_departamentales(dep, tot)
+    assert mascara.loc[t].all()
+
+
+def test_imputar_por_participacion_usa_tot():
+    dep, tot = _deptos_sinteticos()
+    t = dep.index[24 * 15 + 10]
+    real = dep.loc[t, "B"]
+    dep.loc[t, "B"] = np.nan
+    mascara = pd.DataFrame(False, index=dep.index, columns=dep.columns)
+    imputado = processing.imputar_por_participacion(dep, tot, mascara)
+    assert imputado.notna().all().all()
+    assert abs(imputado.loc[t, "B"] - real) / real < 0.05
+    pd.testing.assert_frame_equal(imputado.drop(index=t), dep.drop(index=t))

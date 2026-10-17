@@ -36,6 +36,10 @@ SERIE_PRONOSTICO_CNDC = "PREV"
 # Pronóstico del CNDC para Santa Cruz que aparece en rt/demanda (no es demanda real).
 SERIE_PRONOSTICO_SCZ = "Prev.SCZ"
 
+# Desde esta fecha Σ demanda departamental = generación TOT (antes ≈ 0.965 × TOT, sin
+# pérdidas). Ver processing.ajustar_a_tot.
+CNDC_CAMBIO_DEFINICION_DEMANDA = "2026-05-01"
+
 SIN_ID = "SIN"  # Sistema Interconectado Nacional = suma de departamentos
 
 

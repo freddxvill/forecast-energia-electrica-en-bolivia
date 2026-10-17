@@ -1,5 +1,5 @@
 {
-  "generado": "2026-10-17T17:24:52",
+  "generado": "2026-10-17T17:35:33",
   "rango": [
     "2024-03-01 00:00:00",
     "2026-10-16 23:00:00"
@@ -125,64 +125,76 @@
       "inicio": "2024-03-01 00:00:00",
       "fin": "2026-10-16 23:00:00",
       "n": "23040",
-      "pct_faltante": "0.339"
+      "pct_faltante": "0.052",
+      "pct_imputado": "1.48"
     },
     "CHUQUISACA": {
       "inicio": "2024-03-01 00:00:00",
       "fin": "2026-10-16 23:00:00",
       "n": "23040",
-      "pct_faltante": "0.234"
+      "pct_faltante": "0.052",
+      "pct_imputado": "1.332"
     },
     "COCHABAMBA": {
       "inicio": "2024-03-01 00:00:00",
       "fin": "2026-10-16 23:00:00",
       "n": "23040",
-      "pct_faltante": "0.234"
+      "pct_faltante": "0.052",
+      "pct_imputado": "1.328"
     },
     "LA PAZ": {
       "inicio": "2024-03-01 00:00:00",
       "fin": "2026-10-16 23:00:00",
       "n": "23040",
-      "pct_faltante": "0.234"
+      "pct_faltante": "0.052",
+      "pct_imputado": "1.328"
     },
     "ORURO": {
       "inicio": "2024-03-01 00:00:00",
       "fin": "2026-10-16 23:00:00",
       "n": "23040",
-      "pct_faltante": "0.234"
+      "pct_faltante": "0.052",
+      "pct_imputado": "1.354"
     },
     "POTOSI": {
       "inicio": "2024-03-01 00:00:00",
       "fin": "2026-10-16 23:00:00",
       "n": "23040",
-      "pct_faltante": "0.234"
+      "pct_faltante": "0.052",
+      "pct_imputado": "1.328"
     },
     "SANTA CRUZ": {
       "inicio": "2024-03-01 00:00:00",
       "fin": "2026-10-16 23:00:00",
       "n": "23040",
-      "pct_faltante": "0.234"
+      "pct_faltante": "0.052",
+      "pct_imputado": "1.328"
     },
     "SIN": {
       "inicio": "2024-03-01 00:00:00",
       "fin": "2026-10-16 23:00:00",
       "n": "23040",
-      "pct_faltante": "0.339"
+      "pct_faltante": "0.052",
+      "pct_imputado": "1.549"
     },
     "TARIJA": {
       "inicio": "2024-03-01 00:00:00",
       "fin": "2026-10-16 23:00:00",
       "n": "23040",
-      "pct_faltante": "0.234"
+      "pct_faltante": "0.052",
+      "pct_imputado": "1.367"
     }
   },
   "chequeos": {
-    "ratio_sin_vs_generacion_tot": 0.9666,
+    "ratio_sin_medido_vs_tot_antes_cambio": 0.9597,
+    "ratio_sin_medido_vs_tot_desde_cambio": 0.9994,
+    "ratio_sin_conciliado_vs_tot": 1.0,
+    "pct_horas_depto_imputadas": 1.356,
     "ratio_prev_vs_generacion_tot": 1.002
   },
   "tamanos_mb": {
     "clima_horario.parquet": 1.943,
-    "demanda_horaria.parquet": 1.599,
+    "demanda_horaria.parquet": 3.484,
     "generacion_horaria.parquet": 1.343
   }
 }
