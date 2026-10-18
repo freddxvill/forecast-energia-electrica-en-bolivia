@@ -238,6 +238,57 @@ def descargar_precios(inicio: date, hoy: date | None = None) -> tuple[pd.DataFra
     return mensuales, cm
 
 
+# --- Predespacho (PREV de los próximos días) -----------------------------------------------
+
+
+def parse_precmp_total(raw: dict, fecha: date) -> pd.Series:
+    """PREV horario de un día desde `precmp`: la fila TOTAL del grupo SISTEMA.
+
+    Coincide con el PREV de `rt/generacion`: PREV[h:00] = horas[h − 1] para h = 1…23. El
+    valor de las 24:00 (que correspondería a las 00:00 del día siguiente) viene vacío, así
+    que la hora 00:00 queda NaN (ver `prev_predespacho`). Devuelve una serie indexada por `ds`.
+    """
+    for grupo in raw.get("grupos", []):
+        if grupo.get("tecnologia") != "SISTEMA":
+            continue
+        for fila in grupo["filas"]:
+            if fila.get("es_subtotal") == 1 and fila.get("unidad", "").upper() == "TOTAL":
+                horas = [np.nan if v is None else float(v) for v in fila["horas"][:23]]
+                ds = pd.Timestamp(fecha) + pd.to_timedelta(range(1, 24), unit="h")
+                return pd.Series(horas, index=pd.DatetimeIndex(ds, name="ds"), name="PREV")
+    return pd.Series(dtype="float64", name="PREV")
+
+
+def prev_predespacho(fechas: list[date], session: requests.Session | None = None) -> pd.Series:
+    """PREV horario de `fechas` (consecutivas) desde el predespacho del CNDC.
+
+    La hora 00:00 de cada día se imputa como la media de las 23:00 del día anterior y la 01:00
+    del mismo día. En la historia, esa imputación tiene un MAE de 14 MW sobre el PREV real.
+    Para eso también se descarga el día anterior al primero. Los días que el CNDC aún no publicó
+    quedan fuera.
+    """
+    session = session or _session()
+    dias = [fechas[0] - timedelta(days=1), *fechas]
+    partes = []
+    for f in dias:
+        try:
+            partes.append(parse_precmp_total(_get_json(session, "precmp", fecha=f.isoformat()), f))
+        except requests.HTTPError as e:
+            log.warning("precmp %s no disponible: %s", f, e)
+    if not partes:
+        return pd.Series(dtype="float64", name="PREV")
+    s = pd.concat(partes).sort_index()
+    grilla = pd.date_range(
+        pd.Timestamp(dias[0]), pd.Timestamp(fechas[-1]) + pd.Timedelta(hours=23), freq="h"
+    )
+    s = s.reindex(grilla)
+    medianoche = s.index.hour == 0
+    s[medianoche] = ((s.shift(1) + s.shift(-1)) / 2)[medianoche]
+    s = s[s.index >= pd.Timestamp(fechas[0])].rename("PREV")
+    s.index.name = "ds"
+    return s
+
+
 def acumular(nuevo: pd.DataFrame, existente: pd.DataFrame | None, clave: str) -> pd.DataFrame:
     """Une con lo ya guardado (los datos nuevos tienen prioridad).
 

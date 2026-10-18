@@ -2,7 +2,7 @@
 
 Pronóstico **day-ahead** (24 h) de la demanda horaria del **Sistema Interconectado Nacional (SIN)** y de sus 8 departamentos, con **intervalos de predicción con garantía estadística** (Conformal Prediction). Se usan **datos reales** del operador de la red boliviana.
 
-> 🚧 Proyecto en construcción. El plan completo está en [`docs/plan-forecasting.md`](docs/plan-forecasting.md).
+> 🚧 Proyecto en construcción: falta publicar la demo (Fase 8) y la documentación final (Fase 9).
 
 ## El problema
 
@@ -29,6 +29,28 @@ Son órdenes de magnitud, no ahorros contables. Los supuestos, sus fuentes y la 
 ![Reserva por hora](reports/figures/impacto_reserva_por_hora.png)
 
 La reserva se ajusta a la hora: de madrugada alcanza con ~50 MW y entre las 10 y las 18 h, cuando el error del pronóstico es mayor, hacen falta ~100 MW. Una regla fija paga todo el día la reserva de la peor hora.
+
+## Arquitectura
+
+```mermaid
+flowchart LR
+  A[API CNDC<br/>demanda, generación,<br/>predespacho, precios] --> I[Ingesta<br/>data/build.py]
+  W[Open-Meteo<br/>clima pronosticado 48 h antes] --> I
+  I --> P[(Parquet<br/>data/processed)]
+  P --> B[Backtest, conformal,<br/>jerarquía, impacto<br/>pipelines/*.py]
+  K[Kaggle GPU<br/>NHITS / TFT] --> B
+  P --> D[Pronóstico diario<br/>LightGBM + TFT + PREV corregido<br/>MinT + conformal/ACI]
+  D --> R[(Rama demo-data<br/>artefactos vivos)]
+  R --> API[FastAPI<br/>Hugging Face Spaces]
+  R --> F[Streamlit<br/>demo pública]
+  API --> F
+  GH[GitHub Actions<br/>cron diario + TFT semanal] -.-> D
+```
+
+- **Producción = el mismo esquema evaluado en el backtest.** En los días pasados reproduce exactamente la reconciliación y los intervalos del backtest jerárquico (SIN: MAE 38.1 MW, cobertura 79/89/94 % en test).
+- **Pronóstico diario (06:00 de Bolivia):** se reentrena LightGBM en CPU y el TFT infiere desde un checkpoint que se reentrena cada semana. El predespacho del CNDC de mañana sale de `precmp`. Si el CNDC todavía no lo publicó, el SIN usa solo el ensamble propio.
+- **Rama `demo-data`:** los artefactos que cambian a diario (pronóstico, histórico de pronósticos emitidos y checkpoint) viven en una rama de un solo commit que se reemplaza en cada corrida. Así `main` no acumula megas de parquet por día.
+- **Robustez de la demo:** la app consulta la API. Si la API está dormida, lee la rama `demo-data`, y si eso también falla, la copia de `artifacts/demo/` del repo.
 
 ## Datos
 
@@ -71,7 +93,6 @@ Pronóstico del día D con datos hasta D−2 23:00 (la misma anticipación que e
 - **−30 % de error frente al pronóstico oficial**, con intervalos cuya cobertura coincide con la nominal **en cada hora del día** (conformal por hora + ACI).
 - **Hallazgo:** el error del CNDC es en gran parte un sesgo sistemático por hora. Corregirlo con su propia historia reciente baja su MAE un 22 %.
 - Los miembros del ensamble se eligieron con el periodo de calibración, sin mirar el test.
-- Detalle y ablaciones en [`docs/plan-forecasting.md`](docs/plan-forecasting.md).
 
 ![Cobertura por hora](reports/figures/cp_cobertura_por_hora.png)
 
@@ -95,6 +116,10 @@ uv run poe intervalos         # intervalos conformal + figuras
 uv run poe backtest --conjunto JERARQUIA --modelos naive lgbm   # 9 series (TFT en Kaggle)
 uv run poe jerarquia          # reconciliación SIN → departamentos + intervalos
 uv run poe impacto            # KPIs de negocio vs PREV → reports/impacto.{json,md}
+uv run poe entrenar-tft       # checkpoint del TFT de producción (CPU, ~20 min)
+uv run poe pronostico         # pronóstico de mañana → artifacts/demo/
+uv run poe api                # API local en http://localhost:8000/docs
+uv run poe app                # demo Streamlit local
 uv run poe test               # tests
 uv run poe lint               # ruff
 ```
@@ -141,6 +166,13 @@ src/forecast_energia/
   pipelines/backtest.py backtest + reporte (CLI)
   pipelines/intervalos.py intervalos conformal + comparación + figuras (CLI)
   pipelines/jerarquia.py  reconciliación jerárquica + intervalos por serie (CLI)
+  impacto.py           KPIs de negocio: desvíos evitados, valorización, reserva
+  pipelines/impacto.py    impacto de negocio vs PREV (CLI)
+  pipelines/pronostico.py pronóstico diario de producción (CLI)
+  api/main.py          FastAPI: /forecast, /backtest, /metrics, /health
+app/streamlit_app.py   demo pública (Streamlit, sin torch)
+Dockerfile             imagen de la API para Hugging Face Spaces
+.github/workflows/     CI, pronóstico diario y reentrenamiento semanal del TFT
   viz.py               estilo de gráficos (paleta validada para daltonismo)
 notebooks/01_eda.ipynb único notebook: EDA
 kaggle/                ejecución de las redes neuronales en Kaggle con GPU

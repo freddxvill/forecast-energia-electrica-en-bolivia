@@ -21,3 +21,11 @@ def test_variables_basicas():
     ds = pd.Series(pd.to_datetime(["2025-10-18 23:00"]))  # sábado
     cal = features_calendario(ds).iloc[0]
     assert (cal["hora"], cal["dia_semana"], cal["es_fin_de_semana"]) == (23, 5, 1)
+
+
+def test_dia_de_la_dignidad_no_es_feriado():
+    # Día cívico sin suspensión de actividades: la demanda no cae (ver calendar.DIAS_CIVICOS).
+    ds = pd.Series(pd.to_datetime(["2025-10-17 12:00", "2026-10-17 12:00", "2026-10-18 12:00"]))
+    cal = features_calendario(ds, pd.Series(["SIN", "BENI", "SIN"]))
+    assert cal["es_feriado"].tolist() == [0, 0, 0]
+    assert cal["post_feriado"].tolist() == [0, 0, 0]

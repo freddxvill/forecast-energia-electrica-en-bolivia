@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import logging
 import os
+from pathlib import Path
 
 import pandas as pd
 from neuralforecast import NeuralForecast
@@ -85,6 +86,33 @@ def tft(max_steps: int = 800) -> TFT:
 def _renombrar_mediana(cv: pd.DataFrame) -> pd.DataFrame:
     """MQLoss devuelve `<modelo>-median`: se renombra a `<modelo>` (pronóstico puntual)."""
     return cv.rename(columns={c: c.removesuffix("-median") for c in cv.columns})
+
+
+def entrenar(panel: pd.DataFrame, modelos: list) -> NeuralForecast:
+    """Entrena con toda la historia de `panel` (para producción)."""
+    _silenciar_logs()
+    nf = NeuralForecast(models=modelos, freq="h")
+    nf.fit(df=panel[["unique_id", "ds", "y", *EXOGENAS]])
+    return nf
+
+
+def guardar(nf: NeuralForecast, carpeta: Path) -> None:
+    nf.save(str(carpeta), overwrite=True, save_dataset=False)
+
+
+def cargar(carpeta: Path) -> NeuralForecast:
+    """Carga un checkpoint guardado con `guardar`, siempre en CPU (sirve uno entrenado en GPU)."""
+    _silenciar_logs()
+    return NeuralForecast.load(str(carpeta), map_location="cpu")
+
+
+def pronosticar(nf: NeuralForecast, panel: pd.DataFrame, futuro: pd.DataFrame) -> pd.DataFrame:
+    """Pronostica las `h` horas siguientes al final de `panel`, con las exógenas de `futuro`."""
+    pred = nf.predict(
+        df=panel[["unique_id", "ds", "y", *EXOGENAS]],
+        futr_df=futuro[["unique_id", "ds", *EXOGENAS]],
+    )
+    return _renombrar_mediana(pred.reset_index() if "unique_id" not in pred else pred)
 
 
 def backtest(panel: pd.DataFrame, particion: Particion, modelos: list) -> pd.DataFrame:

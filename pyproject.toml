@@ -14,18 +14,22 @@ dependencies = [
 ]
 
 [dependency-groups]
-models = [
+# `ml`: modelos livianos (CPU, sin torch): lo que usan el CI y el pronóstico diario.
+ml = [
     "statsforecast>=2.0",
     "mlforecast>=1.0",
     "lightgbm>=4.5",
-    "neuralforecast>=3.0",
     "hierarchicalforecast>=1.0",
     "utilsforecast>=0.2",
 ]
+# `neural`: NHITS/TFT. En Linux, torch sale del índice CPU de PyTorch (sin CUDA, ~200 MB).
+neural = ["neuralforecast>=3.0", "torch>=2.4"]
+models = [{ include-group = "ml" }, { include-group = "neural" }]
 api = ["fastapi>=0.115", "uvicorn>=0.32"]
 app = ["streamlit>=1.40", "plotly>=5.24"]
 dev = [
     "pytest>=8.3",
+    "httpx2>=2.13",
     "ruff>=0.8",
     "pre-commit>=4.0",
     "nbstripout>=0.8",
@@ -39,6 +43,14 @@ dev = [
 
 [tool.uv]
 default-groups = ["dev"]
+
+[tool.uv.sources]
+torch = [{ index = "pytorch-cpu", marker = "sys_platform == 'linux'" }]
+
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true
 
 [build-system]
 requires = ["hatchling"]
@@ -75,4 +87,8 @@ reporte = { cmd = "python -m forecast_energia.pipelines.backtest --solo-reporte"
 intervalos = { cmd = "python -m forecast_energia.pipelines.intervalos", help = "Intervalos conformal + figuras desde artifacts/" }
 jerarquia = { cmd = "python -m forecast_energia.pipelines.jerarquia", help = "Reconciliación SIN → departamentos + intervalos" }
 impacto = { cmd = "python -m forecast_energia.pipelines.impacto", help = "KPIs de negocio vs PREV → reports/impacto.{json,md}" }
+pronostico = { cmd = "python -m forecast_energia.pipelines.pronostico", help = "Pronóstico de mañana (producción) → artifacts/demo/" }
+entrenar-tft = { cmd = "python -m forecast_energia.pipelines.pronostico --entrenar-tft", help = "Reentrena el TFT global y guarda el checkpoint" }
+api = { cmd = "uvicorn forecast_energia.api.main:app --reload --port 8000", help = "API local (requiere --group api)" }
+app = { cmd = "streamlit run app/streamlit_app.py", help = "Demo Streamlit local (requiere --group app)" }
 kaggle-preparar = { cmd = "python kaggle/preparar.py", help = "Arma dataset + kernel GPU para Kaggle (--usuario <user>)" }

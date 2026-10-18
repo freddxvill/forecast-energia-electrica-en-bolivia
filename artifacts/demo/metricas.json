@@ -1,0 +1,515 @@
+{
+  "corte": "2026-10-16 23:00:00",
+  "emitido": "2026-10-17 22:30:42.635040",
+  "usa_tft": true,
+  "usa_prev": true,
+  "seguimiento_30_dias": {
+    "desde": "2026-09-17",
+    "hasta": "2026-10-16",
+    "MAE": 59.60801516968881,
+    "MAPE": 4.101553118652848,
+    "MAE_PREV": 71.31862500000001,
+    "MAPE_PREV": 4.994111562957147,
+    "cobertura_80": 78.61111111111111,
+    "cobertura_90": 91.11111111111111,
+    "cobertura_95": 92.08333333333333
+  },
+  "test_intervalos_SIN": [
+    {
+      "nombre": "TFT (cuantiles crudos)",
+      "MAE": 47.33359418080369,
+      "RMSE": 61.35533207988774,
+      "MAPE": 3.535281173772535,
+      "sesgo": 1.0910796713351336,
+      "n": 4392.0,
+      "cobertura_80": 48.816029143898,
+      "ancho_80": 75.3614501953125,
+      "winkler_80": 264.2742336808224,
+      "cobertura_90": 59.56284153005464,
+      "ancho_90": 97.75714111328124,
+      "winkler_90": 380.67716808770746,
+      "cobertura_95": 68.3287795992714,
+      "ancho_95": 117.7728271484375,
+      "winkler_95": 539.2161493464677,
+      "CRPS": 23.602423599008898,
+      "cob90_hora_min": 49.18032786885246,
+      "cob90_hora_max": 71.58469945355192,
+      "cob90_mes_min": 52.5
+    },
+    {
+      "nombre": "TFT + CQR rodante",
+      "MAE": 47.33359418080369,
+      "RMSE": 61.35533207988774,
+      "MAPE": 3.535281173772535,
+      "sesgo": 1.0910796713351336,
+      "n": 4392.0,
+      "cobertura_80": 79.84972677595628,
+      "ancho_80": 152.31526460630212,
+      "winkler_80": 213.3948734165324,
+      "cobertura_90": 89.66302367941712,
+      "ancho_90": 199.07166002617507,
+      "winkler_90": 255.0312068918364,
+      "cobertura_95": 94.99089253187614,
+      "ancho_95": 238.26878616805504,
+      "winkler_95": 291.7633007417828,
+      "CRPS": 18.58626494148328,
+      "cob90_hora_min": 87.43169398907104,
+      "cob90_hora_max": 92.89617486338798,
+      "cob90_mes_min": 84.94623655913979
+    },
+    {
+      "nombre": "Ensamble + CP estático",
+      "MAE": 43.96666565747244,
+      "RMSE": 56.85891045065482,
+      "MAPE": 3.284948568324256,
+      "sesgo": 0.3188328529503184,
+      "n": 4392.0,
+      "cobertura_80": 84.97267759562843,
+      "ancho_80": 158.00137887850428,
+      "winkler_80": 203.2147914495953,
+      "cobertura_90": 93.64754098360656,
+      "ancho_90": 214.0231930137431,
+      "winkler_90": 246.80632145517976,
+      "cobertura_95": 97.19945355191255,
+      "ancho_95": 264.8020555402354,
+      "winkler_95": 290.6900533314817,
+      "CRPS": 17.689251251354797,
+      "cob90_hora_min": 89.07103825136612,
+      "cob90_hora_max": 96.72131147540983,
+      "cob90_mes_min": 80.46875
+    },
+    {
+      "nombre": "Ensamble + CP rodante (sin Mondrian)",
+      "MAE": 43.96666565747244,
+      "RMSE": 56.85891045065482,
+      "MAPE": 3.284948568324256,
+      "sesgo": 0.3188328529503184,
+      "n": 4392.0,
+      "cobertura_80": 75.09107468123861,
+      "ancho_80": 128.9872031544315,
+      "winkler_80": 209.9370249200713,
+      "cobertura_90": 86.908014571949,
+      "ancho_90": 172.07409588343594,
+      "winkler_90": 251.6138089279413,
+      "cobertura_95": 92.7367941712204,
+      "ancho_95": 213.8111653454489,
+      "winkler_95": 287.4314570914265,
+      "CRPS": 17.926717769836024,
+      "cob90_hora_min": 72.1311475409836,
+      "cob90_hora_max": 96.72131147540983,
+      "cob90_mes_min": 69.58333333333333
+    },
+    {
+      "nombre": "Ensamble + CP rodante",
+      "MAE": 43.96666565747244,
+      "RMSE": 56.85891045065482,
+      "MAPE": 3.284948568324256,
+      "sesgo": 0.3188328529503184,
+      "n": 4392.0,
+      "cobertura_80": 76.20673952641167,
+      "ancho_80": 131.1379866910513,
+      "winkler_80": 203.26988581836088,
+      "cobertura_90": 88.47905282331512,
+      "ancho_90": 180.34387513645456,
+      "winkler_90": 241.0063349040508,
+      "cobertura_95": 94.05737704918032,
+      "ancho_95": 222.66723980095048,
+      "winkler_95": 277.49730021867003,
+      "CRPS": 17.513734474640458,
+      "cob90_hora_min": 85.24590163934425,
+      "cob90_hora_max": 91.8032786885246,
+      "cob90_mes_min": 72.22222222222221
+    },
+    {
+      "nombre": "Ensamble + CP rodante + ACI",
+      "MAE": 43.96666565747244,
+      "RMSE": 56.85891045065482,
+      "MAPE": 3.284948568324256,
+      "sesgo": 0.3188328529503184,
+      "n": 4392.0,
+      "cobertura_80": 79.09836065573771,
+      "ancho_80": 142.209602389071,
+      "winkler_80": 197.26593026334092,
+      "cobertura_90": 89.41256830601093,
+      "ancho_90": 186.40604447663023,
+      "winkler_90": 241.0640527314065,
+      "cobertura_95": 94.62659380692168,
+      "ancho_95": 225.96893975503815,
+      "winkler_95": 283.3377938891036,
+      "CRPS": 17.384735239676637,
+      "cob90_hora_min": 86.33879781420765,
+      "cob90_hora_max": 91.8032786885246,
+      "cob90_mes_min": 85.13888888888889
+    },
+    {
+      "nombre": "PREV + CP rodante",
+      "MAE": 54.84942053734063,
+      "RMSE": 70.53242822618007,
+      "MAPE": 4.090892810036232,
+      "sesgo": 7.142522199453553,
+      "n": 4392.0,
+      "cobertura_80": 76.50273224043715,
+      "ancho_80": 128.6420867486339,
+      "winkler_80": 195.7502521630237,
+      "cobertura_90": 88.68397085610201,
+      "ancho_90": 178.26872637750458,
+      "winkler_90": 234.4238607126594,
+      "cobertura_95": 94.10291438979964,
+      "ancho_95": 220.07902720856103,
+      "winkler_95": 272.02828722677594,
+      "CRPS": 18.720467343221447,
+      "cob90_hora_min": 84.69945355191257,
+      "cob90_hora_max": 94.53551912568308,
+      "cob90_mes_min": 72.36111111111111
+    },
+    {
+      "nombre": "Combinado (Ensamble + PREV corregido) + ACI",
+      "MAE": 38.337290581509606,
+      "RMSE": 49.74434759679024,
+      "MAPE": 2.857623762700999,
+      "sesgo": 0.4498016439159691,
+      "n": 4392.0,
+      "cobertura_80": 79.00728597449908,
+      "ancho_80": 122.4021958927389,
+      "winkler_80": 168.22830375317525,
+      "cobertura_90": 89.41256830601093,
+      "ancho_90": 161.53998240320152,
+      "winkler_90": 203.7599785239972,
+      "cobertura_95": 93.9207650273224,
+      "ancho_95": 188.0699997427962,
+      "winkler_95": 236.11046574140275,
+      "CRPS": 14.88063892451636,
+      "cob90_hora_min": 84.15300546448088,
+      "cob90_hora_max": 92.89617486338798,
+      "cob90_mes_min": 84.30555555555556
+    }
+  ],
+  "test_jerarquia_mape": [
+    {
+      "nombre": "SIN",
+      "Base": 2.868642441172052,
+      "BottomUp": 3.0063735551196213,
+      "TopDown": 2.868642441172052,
+      "MinT-WLS": 2.829081382099689,
+      "MinT-shrink": 2.8666326831307565
+    },
+    {
+      "nombre": "SANTA CRUZ",
+      "Base": 5.907452602186972,
+      "BottomUp": 5.907452602186972,
+      "TopDown": 9.5919855728953,
+      "MinT-WLS": 5.620681021008575,
+      "MinT-shrink": 5.670721612272014
+    },
+    {
+      "nombre": "LA PAZ",
+      "Base": 2.9967020378424074,
+      "BottomUp": 2.9967020378424074,
+      "TopDown": 4.957459911021077,
+      "MinT-WLS": 2.976801110216813,
+      "MinT-shrink": 3.1066863189972973
+    },
+    {
+      "nombre": "COCHABAMBA",
+      "Base": 2.911721640744973,
+      "BottomUp": 2.911721640744973,
+      "TopDown": 4.559672555008044,
+      "MinT-WLS": 2.9010108139320887,
+      "MinT-shrink": 2.9404484587024737
+    },
+    {
+      "nombre": "POTOSI",
+      "Base": 3.6051204903724057,
+      "BottomUp": 3.6051204903724057,
+      "TopDown": 9.15515070269194,
+      "MinT-WLS": 3.5697227178830846,
+      "MinT-shrink": 3.599249316739982
+    },
+    {
+      "nombre": "ORURO",
+      "Base": 4.504477868522456,
+      "BottomUp": 4.504477868522456,
+      "TopDown": 9.842549894849451,
+      "MinT-WLS": 4.477944892486298,
+      "MinT-shrink": 4.493469430797068
+    },
+    {
+      "nombre": "TARIJA",
+      "Base": 4.3675765288361,
+      "BottomUp": 4.3675765288361,
+      "TopDown": 7.934612520390805,
+      "MinT-WLS": 4.359026498450369,
+      "MinT-shrink": 4.437530892193967
+    },
+    {
+      "nombre": "CHUQUISACA",
+      "Base": 6.449265070912821,
+      "BottomUp": 6.449265070912821,
+      "TopDown": 7.360325604008716,
+      "MinT-WLS": 6.459441884610922,
+      "MinT-shrink": 6.546019768863552
+    },
+    {
+      "nombre": "BENI",
+      "Base": 9.22919470011793,
+      "BottomUp": 9.22919470011793,
+      "TopDown": 15.067400921398482,
+      "MinT-WLS": 9.26360268780402,
+      "MinT-shrink": 9.177423975270932
+    },
+    {
+      "nombre": "Media deptos",
+      "Base": 4.996438867442008,
+      "BottomUp": 4.996438867442008,
+      "TopDown": 8.558644710282978,
+      "MinT-WLS": 4.953528953299021,
+      "MinT-shrink": 4.996443721729661
+    },
+    {
+      "nombre": "MASE medio (9 series)",
+      "Base": 0.6163167151786245,
+      "BottomUp": 0.6189490744805134,
+      "TopDown": 1.07762769628793,
+      "MinT-WLS": 0.6108785733198205,
+      "MinT-shrink": 0.6186553254739429
+    }
+  ],
+  "test_jerarquia_cobertura": [
+    {
+      "unique_id": "SIN",
+      "cobertura_80": 78.59744990892533,
+      "cobertura_90": 89.23041894353369,
+      "cobertura_95": 93.9207650273224,
+      "ancho_90": 155.38917179721793
+    },
+    {
+      "unique_id": "SANTA CRUZ",
+      "cobertura_80": 78.68852459016394,
+      "cobertura_90": 89.18488160291439,
+      "cobertura_95": 93.19216757741349,
+      "ancho_90": 119.58007675629902
+    },
+    {
+      "unique_id": "LA PAZ",
+      "cobertura_80": 79.89526411657559,
+      "cobertura_90": 90.05009107468123,
+      "cobertura_95": 95.1047358834244,
+      "ancho_90": 34.648900931817664
+    },
+    {
+      "unique_id": "COCHABAMBA",
+      "cobertura_80": 79.84972677595628,
+      "cobertura_90": 90.09562841530054,
+      "cobertura_95": 95.1047358834244,
+      "ancho_90": 26.63830913752499
+    },
+    {
+      "unique_id": "POTOSI",
+      "cobertura_80": 80.25956284153006,
+      "cobertura_90": 90.3688524590164,
+      "cobertura_95": 95.1047358834244,
+      "ancho_90": 28.755399166240792
+    },
+    {
+      "unique_id": "ORURO",
+      "cobertura_80": 79.66757741347905,
+      "cobertura_90": 89.36703096539162,
+      "cobertura_95": 94.4672131147541,
+      "ancho_90": 18.36112457014793
+    },
+    {
+      "unique_id": "TARIJA",
+      "cobertura_80": 78.7568306010929,
+      "cobertura_90": 88.79781420765028,
+      "cobertura_95": 93.5792349726776,
+      "ancho_90": 12.137021228405882
+    },
+    {
+      "unique_id": "CHUQUISACA",
+      "cobertura_80": 79.78142076502732,
+      "cobertura_90": 89.8224043715847,
+      "cobertura_95": 94.94535519125684,
+      "ancho_90": 11.615983792266784
+    },
+    {
+      "unique_id": "BENI",
+      "cobertura_80": 78.7568306010929,
+      "cobertura_90": 89.25318761384335,
+      "cobertura_95": 94.60382513661202,
+      "ancho_90": 9.626067046859262
+    }
+  ],
+  "impacto": {
+    "periodo": {
+      "test": [
+        "2026-04-17",
+        "2026-10-16"
+      ],
+      "dias_test": 183,
+      "horas_evaluadas": 4392,
+      "metodo_produccion": "Combinado + ACI",
+      "referencia": "PREV (predespacho oficial del CNDC)"
+    },
+    "precision": [
+      {
+        "pronostico": "PREV (CNDC)",
+        "MWh_error_anio": 480480.92390710383,
+        "MAE_MW": 54.84942053734063,
+        "MAPE_pct": 4.090892810036232,
+        "delta_MAE_MW": 0.0,
+        "MWh_evitados": 0.0,
+        "MWh_evitados_anio": 0.0,
+        "delta_MAE_pct": 0.0
+      },
+      {
+        "pronostico": "PREV corregido por hora",
+        "MWh_error_anio": 374413.4422472678,
+        "MAE_MW": 42.741260530510026,
+        "MAPE_pct": 3.1857237378388907,
+        "delta_MAE_MW": -12.108160006830602,
+        "MWh_evitados": 53179.03875,
+        "MWh_evitados_anio": 106067.48165983606,
+        "delta_MAE_pct": -22.07527424758764,
+        "p_DM_vs_PREV": 1.5401855878074875e-24
+      },
+      {
+        "pronostico": "Ensamble (LightGBM + TFT)",
+        "MWh_error_anio": 385147.9911594585,
+        "MAE_MW": 43.96666565747244,
+        "MAPE_pct": 3.2849485683242556,
+        "delta_MAE_MW": -10.882754879868187,
+        "MWh_evitados": 47797.059432381066,
+        "MWh_evitados_anio": 95332.93274764529,
+        "delta_MAE_pct": -19.841148317071788,
+        "p_DM_vs_PREV": 3.001918737007282e-07
+      },
+      {
+        "pronostico": "Combinado (Ensamble + PREV corregido)",
+        "MWh_error_anio": 335834.6654940242,
+        "MAE_MW": 38.337290581509606,
+        "MAPE_pct": 2.857623762700999,
+        "delta_MAE_MW": -16.51212995583102,
+        "MWh_evitados": 72521.27476600981,
+        "MWh_evitados_anio": 144646.2584130797,
+        "delta_MAE_pct": -30.104474749354594,
+        "p_DM_vs_PREV": 3.8217033903980595e-28
+      }
+    ],
+    "economico": {
+      "MWh_evitados_anio": 144646.2584130797,
+      "tarifa_regulada": {
+        "precio_energia_medio_usd_mwh": 21.17391350530009,
+        "usd_anio": 3062727.3645038344,
+        "fuente": "CNDC dashboard/precios: precio de energía mensual (monómico)"
+      },
+      "costo_marginal": {
+        "precio_medio_usd_mwh": 18.62871791032102,
+        "usd_anio": 2694574.34476066,
+        "pct_horas_con_dato": 96.17486338797814,
+        "fuente": "CNDC cm-diario: costo marginal medio diario"
+      },
+      "costo_gas": {
+        "bajo": {
+          "heat_rate_mmbtu_mwh": 9.0,
+          "precio_gas_usd_mmbtu": 5.0,
+          "costo_usd_mwh": 45.0,
+          "usd_anio": 6509081.628588586
+        },
+        "central": {
+          "heat_rate_mmbtu_mwh": 10.5,
+          "precio_gas_usd_mmbtu": 6.5,
+          "costo_usd_mwh": 68.25,
+          "usd_anio": 9872107.13669269
+        },
+        "alto": {
+          "heat_rate_mmbtu_mwh": 12.0,
+          "precio_gas_usd_mmbtu": 8.0,
+          "costo_usd_mwh": 96.0,
+          "usd_anio": 13886040.807655651
+        }
+      },
+      "chequeo_heat_rate": {
+        "costo_marginal_mediano_usd_mwh": 17.601,
+        "precio_gas_regulado_usd_mmbtu": 1.2621359223300972,
+        "heat_rate_implicito_max": 13.94540769230769
+      }
+    },
+    "reserva": {
+      "nivel_pct": 95,
+      "precio_potencia_usd_kw_mes": 11.009927868852458,
+      "reglas": {
+        "PREV + regla fija": {
+          "reserva_media_MW": 116.09325000000013,
+          "reserva_max_MW": 116.09325000000013,
+          "cobertura_pct": 95.76502732240438,
+          "n": 4392
+        },
+        "PREV + conformal por hora": {
+          "reserva_media_MW": 80.66165869763206,
+          "reserva_max_MW": 227.99000000000024,
+          "cobertura_pct": 95.08196721311475,
+          "n": 4392
+        },
+        "Combinado + conformal por hora + ACI": {
+          "reserva_media_MW": 74.97278893526281,
+          "reserva_max_MW": 168.05109246134543,
+          "cobertura_pct": 94.30783242258653,
+          "n": 4392,
+          "ahorro_MW_vs_PREV + regla fija": 41.12046106473731,
+          "ahorro_usd_anio_vs_PREV + regla fija": 5432799.723080565,
+          "ahorro_MW_vs_PREV + regla fija oráculo (misma cobertura)": 26.835849498252358,
+          "ahorro_usd_anio_vs_PREV + regla fija oráculo (misma cobertura)": 3545529.2073016665
+        },
+        "PREV + regla fija oráculo (misma cobertura)": {
+          "reserva_media_MW": 101.80863843351517,
+          "reserva_max_MW": 101.80863843351528,
+          "cobertura_pct": 94.30783242258653,
+          "n": 4392
+        }
+      }
+    },
+    "confiabilidad": {
+      "cobertura_80": 79.00728597449908,
+      "cobertura_90": 89.41256830601093,
+      "cobertura_95": 93.9207650273224,
+      "ancho_90_MW": 161.53998240320152,
+      "cobertura_90_peor_hora": 84.15300546448088,
+      "peor_hora": 19,
+      "cobertura_90_peor_mes": 84.30555555555556,
+      "peor_mes": "2026-06",
+      "dentro_de_2pp": true
+    },
+    "prospectivo": null,
+    "supuestos": {
+      "heat_rate_mmbtu_mwh": {
+        "bajo": 9.0,
+        "central": 10.5,
+        "alto": 12.0,
+        "descripcion": "Consumo específico de la unidad térmica que ajusta el desvío",
+        "fuente": "Rango típico de turbinas a gas de ciclo abierto (el parque marginal del SIN). Chequeo con datos del CNDC: costo marginal mediano / precio regulado del gas (lo calcula pipelines.impacto)."
+      },
+      "precio_gas_oportunidad_usd_mmbtu": {
+        "bajo": 5.0,
+        "central": 6.5,
+        "alto": 8.0,
+        "descripcion": "Costo de oportunidad del gas: precio de exportación a Brasil",
+        "fuente": "Contratos de YPFB con compradores brasileños indexados al Brent, ~6–7 USD/MMBtu (OilPrice.com, 2025); históricamente 4–6 USD/MMBtu."
+      },
+      "precio_gas_regulado_usd_mpc": {
+        "central": 1.3,
+        "descripcion": "Precio regulado del gas para generación termoeléctrica",
+        "fuente": "DS 26037 (2000), vigente; ~1.3 USD/MMBtu (1 MPC ≈ 1.03 MMBtu)."
+      },
+      "mmbtu_por_mpc": {
+        "central": 1.03,
+        "descripcion": "Poder calorífico del gas natural boliviano",
+        "fuente": "Valor típico del gas natural seco (~1 030 BTU/pie³)."
+      },
+      "nivel_reserva": {
+        "central": 95,
+        "descripcion": "% de los desvíos al alza (demanda > pronóstico) que cubre la reserva",
+        "fuente": "Criterio del análisis (cuantil 95 unilateral = límite superior del IC 90 %)."
+      }
+    }
+  }
+}

@@ -28,3 +28,9 @@ kaggle/_build/
 artifacts/backtest/*.parquet
 artifacts/intervalos_*.parquet
 artifacts/jerarquia.parquet
+
+# Checkpoints del TFT de producción: viven en la rama `demo-data` (ver .github/scripts/).
+artifacts/modelos/
+
+# Plan de trabajo interno (solo local, no se publica).
+docs/plan-forecasting.md

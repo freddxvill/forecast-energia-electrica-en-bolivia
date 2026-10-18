@@ -92,3 +92,37 @@ def test_acumular_conserva_la_historia_y_prioriza_lo_nuevo():
     nuevo = pd.DataFrame({"fecha": pd.to_datetime(["2026-01-02", "2026-01-03"]), "v": [9, 3]})
     out = cndc.acumular(nuevo, viejo, "fecha")
     assert out["v"].tolist() == [1, 9, 3]
+
+
+def test_parse_precmp_total_mapea_h_menos_1():
+    s = cndc.parse_precmp_total(_cargar("cndc_precmp_2026-10-18.json"), date(2026, 10, 18))
+    assert len(s) == 23
+    assert s.index[0] == pd.Timestamp("2026-10-18 01:00")
+    assert s.index[-1] == pd.Timestamp("2026-10-18 23:00")
+    assert s.iloc[0] == pytest.approx(1117.3, abs=0.1)
+
+
+def test_parse_precmp_sin_datos_devuelve_vacio():
+    assert cndc.parse_precmp_total({"sin_datos": True}, date(2026, 10, 25)).empty
+
+
+def test_prev_predespacho_imputa_la_medianoche(monkeypatch):
+    def falso(_session, _endpoint, fecha):
+        base = 1000.0 if fecha == "2026-10-17" else 2000.0
+        horas = [base + h for h in range(1, 24)] + [None]
+        return {
+            "grupos": [
+                {
+                    "tecnologia": "SISTEMA",
+                    "filas": [{"unidad": "TOTAL", "es_subtotal": 1, "horas": horas}],
+                }
+            ]
+        }
+
+    monkeypatch.setattr(cndc, "_get_json", falso)
+    s = cndc.prev_predespacho([date(2026, 10, 18)], session=object())
+    assert s.index.min() == pd.Timestamp("2026-10-18 00:00")
+    assert len(s) == 24
+    # media de las 23:00 del 17 (1023) y la 01:00 del 18 (2001)
+    assert s.iloc[0] == pytest.approx((1023 + 2001) / 2)
+    assert s.loc["2026-10-18 05:00"] == pytest.approx(2005)

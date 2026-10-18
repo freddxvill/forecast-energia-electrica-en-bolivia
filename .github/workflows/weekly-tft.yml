@@ -1,0 +1,35 @@
+name: Reentrenamiento semanal del TFT
+
+# Los domingos reentrena el TFT global (9 series) en CPU con toda la historia y publica el
+# checkpoint en `demo-data`. El pronóstico diario lo usa para inferir sin GPU.
+on:
+  schedule:
+    - cron: "0 6 * * 0"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: demo-data
+  cancel-in-progress: false
+
+jobs:
+  entrenar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 300
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+      - uses: actions/cache@v4
+        with:
+          path: data/raw
+          key: cndc-raw-${{ github.run_id }}
+          restore-keys: cndc-raw-
+      - run: bash .github/scripts/demo-data.sh restaurar
+      - run: uv sync --locked --group ml --group neural
+      - run: uv run poe data
+      - run: uv run poe entrenar-tft
+      - run: bash .github/scripts/demo-data.sh publicar "TFT reentrenado $(date -u +%F)"

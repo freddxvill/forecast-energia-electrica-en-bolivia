@@ -7,10 +7,19 @@ import pandas as pd
 
 from forecast_energia import config
 
+# Días cívicos que la librería `holidays` lista como feriados pero no suspenden actividades: el 17
+# de octubre la demanda del SIN no cae (−1.0 % en 2024, +3.7 % en 2025, contra −7 % a −25 % en los
+# feriados reales). Marcarlo como feriado hacía que los modelos pronosticaran una caída inexistente.
+DIAS_CIVICOS = ("Día de la Dignidad Nacional",)
+
 
 def feriados(anios: list[int], subdiv: str | None = None) -> holidays.HolidayBase:
     """Feriados de Bolivia; con `subdiv` se agrega el feriado departamental."""
-    return holidays.Bolivia(years=anios, subdiv=subdiv)
+    cal = holidays.Bolivia(years=anios, subdiv=subdiv)
+    for nombre in DIAS_CIVICOS:
+        for fecha in [f for f, n in cal.items() if n == nombre]:
+            del cal[fecha]
+    return cal
 
 
 def _fechas(cal: holidays.HolidayBase) -> pd.DatetimeIndex:

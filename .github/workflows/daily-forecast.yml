@@ -1,0 +1,39 @@
+name: Pronóstico diario
+
+# Todos los días a las 06:00 de Bolivia: descarga el día nuevo del CNDC y el clima, emite el
+# pronóstico de mañana (LightGBM + TFT desde el checkpoint + predespacho corregido, MinT y
+# conformal) y publica los artefactos en la rama `demo-data`, de donde los leen la API y la app.
+on:
+  schedule:
+    - cron: "0 10 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: demo-data
+  cancel-in-progress: false
+
+jobs:
+  pronostico:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+      # Caché mensual de la API del CNDC (data/raw no se versiona). Con clave única por corrida
+      # se guarda siempre la versión nueva y se restaura la última.
+      - uses: actions/cache@v4
+        with:
+          path: data/raw
+          key: cndc-raw-${{ github.run_id }}
+          restore-keys: cndc-raw-
+      - run: bash .github/scripts/demo-data.sh restaurar
+      # torch sale del índice CPU de PyTorch (ver pyproject.toml): sin CUDA.
+      - run: uv sync --locked --group ml --group neural
+      - run: uv run poe data
+      - run: uv run poe pronostico
+      - run: bash .github/scripts/demo-data.sh publicar "Pronóstico diario $(date -u +%F)"

@@ -1,0 +1,6 @@
+# Dependencias de la demo en Streamlit Community Cloud (sin torch ni modelos).
+streamlit==1.66.0
+plotly==7.1.0
+pandas>=2.2
+pyarrow>=17
+requests>=2.32

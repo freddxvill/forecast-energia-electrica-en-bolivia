@@ -45,6 +45,27 @@ def corregir_sesgo_por_hora(
     return cv.assign(**{nombre: cv[modelo] + sesgo.reindex(cv.index)})
 
 
+def sesgo_reciente(
+    y: pd.Series,
+    yhat: pd.Series,
+    hasta: pd.Timestamp,
+    ventana_dias: int = VENTANA_DIAS,
+    min_dias: int = MIN_DIAS,
+) -> pd.Series:
+    """Mediana de y − ŷ por hora del día en los `ventana_dias` días que terminan en `hasta`.
+
+    Es la corrección de `corregir_sesgo_por_hora` para producción: con el corte al final del
+    día `hasta`, se aplica a los días siguientes. Series indexadas por `ds`. Las horas con menos
+    de `min_dias` errores quedan NaN.
+    """
+    e = (y - yhat).dropna()
+    dia = e.index.normalize()
+    hasta = pd.Timestamp(hasta).normalize()
+    e = e[(dia <= hasta) & (dia > hasta - pd.Timedelta(days=ventana_dias))]
+    g = e.groupby(e.index.hour)
+    return g.median().where(g.size() >= min_dias).reindex(range(24))
+
+
 def combinar(cv: pd.DataFrame, miembros: list[str], nombre: str = NOMBRE) -> pd.DataFrame:
     """Media simple de los miembros (NaN si falta alguno)."""
     return cv.assign(**{nombre: cv[miembros].mean(axis=1, skipna=False)})

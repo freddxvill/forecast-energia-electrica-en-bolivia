@@ -59,6 +59,29 @@ def nivel(panel: pd.DataFrame) -> pd.Series:
     )
 
 
+def pronosticar(panel: pd.DataFrame, futuro: pd.DataFrame) -> pd.DataFrame:
+    """Entrena con toda la historia de `panel` y pronostica las filas de `futuro` (≤ 48 h).
+
+    Ambos deben traer las exógenas de `features.agregar_exogenas`; `futuro` sin `y`. El nivel
+    de las horas futuras usa solo datos observados (está desplazado 48 h).
+    """
+    todo = pd.concat([panel, futuro], ignore_index=True)
+    todo = todo.sort_values(["unique_id", "ds"]).reset_index(drop=True)
+    todo["nivel"] = nivel(todo)
+    es_futuro = todo["y"].isna()
+    hist = todo[~es_futuro].dropna(subset=["nivel"])
+    fut = todo[es_futuro]
+    mlf = crear().fit(
+        hist.assign(y=hist["y"] / hist["nivel"])[["unique_id", "ds", "y", *EXOGENAS]],
+        static_features=[],
+    )
+    h = int(fut.groupby("unique_id").size().max())
+    pred = mlf.predict(h=h, X_df=fut[["unique_id", "ds", *EXOGENAS]])
+    pred = pred.merge(fut[["unique_id", "ds", "nivel"]], on=["unique_id", "ds"], how="inner")
+    pred[NOMBRE] = pred[NOMBRE] * pred.pop("nivel")
+    return pred
+
+
 def backtest(panel: pd.DataFrame, particion: Particion) -> pd.DataFrame:
     """`panel` debe traer las exógenas de `features.agregar_exogenas`."""
     p = panel.assign(nivel=nivel(panel)).dropna(subset=["nivel"]).reset_index(drop=True)

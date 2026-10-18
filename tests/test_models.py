@@ -50,3 +50,20 @@ def test_correccion_de_sesgo_por_hora_sin_leakage():
     out2 = combinacion.corregir_sesgo_por_hora(alterado, "M", min_dias=5)
     fila = cv["ds"] >= dia_d
     pd.testing.assert_series_equal(out2.loc[fila, "M corregido"], out.loc[fila, "M corregido"])
+
+
+def test_sesgo_reciente_coincide_con_la_correccion_del_backtest():
+    from forecast_energia.models import combinacion
+
+    rng = np.random.default_rng(0)
+    ds = pd.date_range("2026-01-01", periods=24 * 120, freq="h")
+    cv = pd.DataFrame(
+        {"unique_id": "SIN", "ds": ds, "y": 100 + rng.normal(0, 5, ds.size), "M": 95.0}
+    )
+    out = combinacion.corregir_sesgo_por_hora(cv, "M")
+    dia_d = ds[-1].normalize()
+    s = cv.set_index("ds")
+    sesgo = combinacion.sesgo_reciente(s["y"], s["M"], hasta=dia_d - pd.Timedelta(days=2))
+    ultimo = out[out["ds"] >= dia_d].set_index("ds")
+    esperado = ultimo["M"] + sesgo.reindex(ultimo.index.hour).to_numpy()
+    np.testing.assert_allclose(ultimo["M corregido"], esperado)
