@@ -22,3 +22,9 @@ lightning_logs/
 
 # Paquetes armados para Kaggle (se regeneran con kaggle/preparar.py)
 kaggle/_build/
+
+# Artefactos derivados (se regeneran en segundos con `poe reporte`, `poe intervalos`
+# y `poe jerarquia`). Sí se versionan los backtests por familia: artifacts/backtest/*/.
+artifacts/backtest/*.parquet
+artifacts/intervalos_*.parquet
+artifacts/jerarquia.parquet

@@ -52,6 +52,13 @@ Pronóstico del día D con datos hasta D−2 23:00 (la misma anticipación que e
 
 ![Cobertura por hora](reports/figures/cp_cobertura_por_hora.png)
 
+**Pronóstico por departamento.** Modelos globales sobre las 9 series, reconciliados con MinT-WLS (elegido por calibración):
+- La suma de los departamentos coincide exactamente con el SIN; los pronósticos base no cuadraban por 23 MW de media.
+- Santa Cruz mejora de 5.9 % a 5.6 % de MAPE (p = 0.002).
+- Los intervalos cubren lo nominal en las 9 series.
+
+![Jerarquía](reports/figures/jerarquia_mape_por_serie.png)
+
 ![Semana de ejemplo](reports/figures/cp_semana_ejemplo.png)
 
 ## Cómo reproducir
@@ -62,6 +69,8 @@ uv run poe data               # descarga incremental → data/processed/*.parque
 uv run poe backtest           # backtest de todos los modelos → artifacts/ + reports/
 uv run poe reporte            # tabla de métricas a partir de artifacts/
 uv run poe intervalos         # intervalos conformal + figuras
+uv run poe backtest --conjunto JERARQUIA --modelos naive lgbm   # 9 series (TFT en Kaggle)
+uv run poe jerarquia          # reconciliación SIN → departamentos + intervalos
 uv run poe test               # tests
 uv run poe lint               # ruff
 ```
@@ -78,11 +87,11 @@ Salidas de `poe data` (formato largo de Nixtla `unique_id, ds, y`, con `ds` = in
 NHITS y TFT son lentos en CPU. `kaggle/` arma un dataset privado (código + datos) y un kernel con GPU T4:
 
 ```bash
-uv run poe kaggle-preparar --usuario <usuario> --modelos nhits tft
+uv run poe kaggle-preparar --usuario <usuario> --modelos nhits tft            # o --conjunto JERARQUIA --modelos tft
 cd kaggle/_build/dataset && kaggle datasets create -p .   # o `datasets version -p . -m "..."`
 cd ../kernel && kaggle kernels push -p .
 kaggle kernels output <usuario>/forecast-energia-backtest -p kaggle/_build/salida
-# copiar salida/artifacts/backtest/SIN/{nhits,tft}.parquet a artifacts/backtest/SIN/ y correr `poe reporte`
+# copiar salida/artifacts/backtest/<conjunto>/*.parquet a artifacts/backtest/<conjunto>/ y correr `poe reporte`
 ```
 
 En Windows conviene exportar `PYTHONIOENCODING=utf-8` antes de usar el CLI de Kaggle, y ejecutarlo desde dentro de la carpeta (`-p .`).
@@ -103,12 +112,15 @@ src/forecast_energia/
   features.py          exógenas futuras (calendario + clima pronosticado 48 h antes)
   models/              naive, MSTL, LightGBM, NHITS/TFT, ensamble, combinación con PREV
   conformal.py         split conformal, CQR y ACI (Mondrian por hora)
+  hierarchy.py         reconciliación BottomUp / TopDown / MinT (WLS y shrink)
   pipelines/backtest.py backtest + reporte (CLI)
   pipelines/intervalos.py intervalos conformal + comparación + figuras (CLI)
+  pipelines/jerarquia.py  reconciliación jerárquica + intervalos por serie (CLI)
   viz.py               estilo de gráficos (paleta validada para daltonismo)
 notebooks/01_eda.ipynb único notebook: EDA
 kaggle/                ejecución de las redes neuronales en Kaggle con GPU
-artifacts/backtest/    pronósticos del backtest (insumo de conformal y de la demo)
+artifacts/backtest/    pronósticos del backtest por familia de modelos (versionados: las redes salen de Kaggle);
+                       los combinados e intervalos se regeneran con `poe reporte`, `poe intervalos`, `poe jerarquia`
 reports/figures/       figuras del README
 tests/                 pytest (con respuestas reales de la API como fixtures)
 docs/                  plan del proyecto

@@ -4,11 +4,15 @@ Uso:
     uv run python -m forecast_energia.pipelines.backtest                    # todos los modelos
     uv run python -m forecast_energia.pipelines.backtest --modelos lgbm nhits
     uv run python -m forecast_energia.pipelines.backtest --solo-reporte     # reusa artifacts/
+    uv run python -m forecast_energia.pipelines.backtest --conjunto JERARQUIA --modelos naive lgbm
 
-Cada familia de modelos se guarda en `artifacts/backtest/<unique_id>/<familia>.parquet`, así
-se puede reejecutar una sola sin repetir las demás (TFT tarda bastante en CPU). El reporte
-combina todo lo disponible en `artifacts/backtest/<unique_id>.parquet` y
-`reports/metricas_test_<unique_id>.csv`.
+Conjuntos de series: `SIN` (solo el total nacional) y `JERARQUIA` (SIN + 8 departamentos, con
+modelos globales entrenados sobre las 9 series a la vez).
+
+Cada familia de modelos se guarda en `artifacts/backtest/<conjunto>/<familia>.parquet`, así se
+puede reejecutar una sola sin repetir las demás (TFT tarda bastante en CPU). El reporte
+combina todo en `artifacts/backtest/<conjunto>.parquet` y, para `SIN`,
+`reports/metricas_test_SIN.csv`.
 """
 
 from __future__ import annotations
@@ -34,6 +38,11 @@ CLAVES = ["unique_id", "ds", "cutoff"]
 # Modelos aprendidos que pueden formar parte del ensamble (los naive y PREV no).
 CANDIDATOS_ENSAMBLE = ["MSTL", ml.NOMBRE, "NHITS", "TFT"]
 
+CONJUNTOS = {
+    "SIN": [config.SIN_ID],
+    "JERARQUIA": [config.SIN_ID, *config.DEPARTAMENTO_CODIGOS],
+}
+
 FAMILIAS: dict[str, Callable[[pd.DataFrame, E.Particion], pd.DataFrame]] = {
     "naive": baselines.backtest,
     "mstl": stats.backtest,
@@ -43,10 +52,10 @@ FAMILIAS: dict[str, Callable[[pd.DataFrame, E.Particion], pd.DataFrame]] = {
 }
 
 
-def preparar_panel(unique_id: str) -> tuple[pd.DataFrame, pd.DataFrame, E.Particion]:
+def preparar_panel(unique_ids: list[str]) -> tuple[pd.DataFrame, pd.DataFrame, E.Particion]:
     """Panel con exógenas recortado a la partición, y las observaciones originales."""
     dem = io.cargar_demanda()
-    observado = dem.loc[dem["unique_id"] == unique_id, ["unique_id", "ds", "y"]]
+    observado = dem.loc[dem["unique_id"].isin(unique_ids), ["unique_id", "ds", "y"]]
     panel = io.panel_nixtla(observado)
     particion = E.particion_por_defecto(panel["ds"].max())
     panel = E.recortar_para_backtest(panel, particion)
@@ -54,15 +63,16 @@ def preparar_panel(unique_id: str) -> tuple[pd.DataFrame, pd.DataFrame, E.Partic
     return panel, observado, particion
 
 
-def _ruta(unique_id: str, familia: str) -> Path:
-    return ARTIFACTS / unique_id.replace(" ", "_") / f"{familia}.parquet"
+def _ruta(conjunto: str, familia: str) -> Path:
+    return ARTIFACTS / conjunto / f"{familia}.parquet"
 
 
-def correr(unique_id: str, familias: list[str]) -> None:
-    panel, observado, particion = preparar_panel(unique_id)
+def correr(conjunto: str, familias: list[str]) -> None:
+    panel, observado, particion = preparar_panel(CONJUNTOS[conjunto])
     log.info(
-        "%s: %d ventanas (calibración %d días, test %d días hasta %s)",
-        unique_id,
+        "%s (%d series): %d ventanas (calibración %d días, test %d días hasta %s)",
+        conjunto,
+        panel["unique_id"].nunique(),
         particion.n_ventanas(),
         particion.dias_calibracion,
         particion.dias_test,
@@ -72,24 +82,22 @@ def correr(unique_id: str, familias: list[str]) -> None:
         t0 = time.time()
         cv = FAMILIAS[familia](panel, particion)
         cv = E.reemplazar_y_observado(E.filtrar_dia_objetivo(cv), observado)
-        ruta = _ruta(unique_id, familia)
+        ruta = _ruta(conjunto, familia)
         ruta.parent.mkdir(parents=True, exist_ok=True)
         cv.to_parquet(ruta, index=False)
-        log.info(
-            "%s/%s: %.0f s, %d filas → %s", unique_id, familia, time.time() - t0, len(cv), ruta
-        )
+        log.info("%s/%s: %.0f s, %d filas → %s", conjunto, familia, time.time() - t0, len(cv), ruta)
 
 
-def combinar(unique_id: str) -> pd.DataFrame:
+def combinar(conjunto: str) -> pd.DataFrame:
     """Une las familias disponibles en un solo DataFrame ancho (una columna por modelo)."""
-    partes = [pd.read_parquet(p) for p in sorted(_ruta(unique_id, "x").parent.glob("*.parquet"))]
+    partes = [pd.read_parquet(p) for p in sorted(_ruta(conjunto, "x").parent.glob("*.parquet"))]
     if not partes:
-        raise FileNotFoundError(f"No hay backtests para {unique_id}: corré el pipeline primero.")
+        raise FileNotFoundError(f"No hay backtests para {conjunto}: corré el pipeline primero.")
     base = partes[0]
     for p in partes[1:]:
         nuevas = [c for c in p.columns if c not in base.columns]
         base = base.merge(p[CLAVES + nuevas], on=CLAVES, how="inner")
-    if unique_id == config.SIN_ID:
+    if config.SIN_ID in CONJUNTOS[conjunto]:
         base = baselines.agregar_prev(base, io.cargar_generacion())
     particion = E.particion_por_defecto(base["ds"].max())
     base["periodo"] = particion.etiqueta(base["ds"])
@@ -101,15 +109,29 @@ def modelos_en(cv: pd.DataFrame) -> list[str]:
     return [c for c in cv.columns if c not in excluir and "-lo-" not in c and "-hi-" not in c]
 
 
-def reporte(unique_id: str) -> pd.DataFrame:
-    cv = combinar(unique_id)
+def reporte_jerarquia(cv: pd.DataFrame) -> pd.DataFrame:
+    """MAPE de test por serie y modelo (la reconciliación la hace `pipelines.jerarquia`)."""
+    test = cv[cv["periodo"] == "test"]
+    modelos = [m for m in modelos_en(cv) if m != baselines.NOMBRE_PREV]
+    return (
+        test.groupby("unique_id")
+        .apply(lambda g: E.evaluar(g, modelos)["MAPE"], include_groups=False)
+        .round(2)
+    )
+
+
+def reporte(conjunto: str) -> pd.DataFrame:
+    cv = combinar(conjunto)
+    if len(CONJUNTOS[conjunto]) > 1:
+        cv.to_parquet(ARTIFACTS / f"{conjunto}.parquet", index=False)
+        return reporte_jerarquia(cv)
+    unique_id = CONJUNTOS[conjunto][0]
     candidatos = [m for m in CANDIDATOS_ENSAMBLE if m in cv]
     if len(candidatos) >= 2:
         miembros = ensemble.seleccionar(cv, candidatos)
         cv = ensemble.agregar(cv, miembros)
         log.info("Ensamble = media de %s (mejores en calibración)", miembros)
-    salida = ARTIFACTS / f"{unique_id.replace(' ', '_')}.parquet"
-    cv.to_parquet(salida, index=False)
+    cv.to_parquet(ARTIFACTS / f"{conjunto}.parquet", index=False)
 
     dem = io.cargar_demanda()
     y_hist = io.serie(dem, unique_id)
@@ -129,7 +151,7 @@ def reporte(unique_id: str) -> pd.DataFrame:
     tabla[f"p_vs_{referencia}"] = pd.Series({m: r["p_valor"] for m, r in dm.items()})
 
     REPORTS.mkdir(parents=True, exist_ok=True)
-    tabla.to_csv(REPORTS / f"metricas_test_{unique_id.replace(' ', '_')}.csv")
+    tabla.to_csv(REPORTS / f"metricas_test_{conjunto}.csv")
     return tabla
 
 
@@ -137,7 +159,7 @@ def main(argv: list[str] | None = None) -> None:
     parser = argparse.ArgumentParser(
         description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
     )
-    parser.add_argument("--unique-id", default=config.SIN_ID)
+    parser.add_argument("--conjunto", choices=list(CONJUNTOS), default="SIN")
     parser.add_argument("--modelos", nargs="+", choices=list(FAMILIAS), default=list(FAMILIAS))
     parser.add_argument("--solo-reporte", action="store_true")
     args = parser.parse_args(argv)
@@ -146,8 +168,12 @@ def main(argv: list[str] | None = None) -> None:
         level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s"
     )
     if not args.solo_reporte:
-        correr(args.unique_id, args.modelos)
-    tabla = reporte(args.unique_id)
+        correr(args.conjunto, args.modelos)
+    tabla = reporte(args.conjunto)
+    if len(CONJUNTOS[args.conjunto]) > 1:
+        print("MAPE (%) de test por serie:")
+        print(tabla.to_string())
+        return
     columnas = [
         "MAE_calib",
         "MAE",

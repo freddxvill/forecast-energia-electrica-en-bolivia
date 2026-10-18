@@ -1,7 +1,7 @@
 """Kernel de Kaggle: corre el backtest (pipelines.backtest) con GPU y deja los artefactos en
 /kaggle/working para descargarlos con `kaggle kernels output`.
 
-`kaggle/preparar.py` reemplaza los marcadores __MODELOS__ y __UNIQUE_ID__ al armar el kernel.
+`kaggle/preparar.py` reemplaza los marcadores __MODELOS__ y __CONJUNTO__ al armar el kernel.
 El código del proyecto y los datos procesados llegan como dataset privado (`proyecto.zip`).
 """
 
@@ -14,7 +14,7 @@ import zipfile
 from pathlib import Path
 
 MODELOS = "__MODELOS__".split()  # noqa: SIM905 (marcador reemplazado por preparar.py)
-UNIQUE_ID = "__UNIQUE_ID__"
+CONJUNTO = "__CONJUNTO__"
 
 # Mismas versiones que uv.lock, para que los resultados sean comparables con los locales.
 PAQUETES = [
@@ -67,7 +67,7 @@ def main() -> None:
     log(f"Proyecto en {raiz}: {sorted(p.name for p in raiz.iterdir())}")
     instalar()
     env = os.environ | {"PYTHONPATH": str(raiz / "src"), "PYTHONIOENCODING": "utf-8"}
-    cmd = [sys.executable, "-m", "forecast_energia.pipelines.backtest", "--unique-id", UNIQUE_ID]
+    cmd = [sys.executable, "-m", "forecast_energia.pipelines.backtest", "--conjunto", CONJUNTO]
     cmd += ["--modelos", *MODELOS]
     log("Ejecutando: " + " ".join(cmd))
     subprocess.run(cmd, check=True, cwd=raiz, env=env)

@@ -43,12 +43,12 @@ def armar_dataset(usuario: str) -> Path:
     return carpeta
 
 
-def armar_kernel(usuario: str, modelos: list[str], unique_id: str) -> Path:
+def armar_kernel(usuario: str, modelos: list[str], conjunto: str) -> Path:
     carpeta = BUILD / "kernel"
     shutil.rmtree(carpeta, ignore_errors=True)
     carpeta.mkdir(parents=True)
     codigo = (RAIZ / "kaggle" / "kernel_backtest.py").read_text(encoding="utf-8")
-    codigo = codigo.replace("__MODELOS__", " ".join(modelos)).replace("__UNIQUE_ID__", unique_id)
+    codigo = codigo.replace("__MODELOS__", " ".join(modelos)).replace("__CONJUNTO__", conjunto)
     (carpeta / "kernel_backtest.py").write_text(codigo, encoding="utf-8")
     meta = {
         "id": f"{usuario}/{SLUG_KERNEL}",
@@ -72,10 +72,10 @@ def main() -> None:
     )
     parser.add_argument("--usuario", required=True)
     parser.add_argument("--modelos", nargs="+", default=["naive", "mstl", "lgbm", "nhits", "tft"])
-    parser.add_argument("--unique-id", default="SIN")
+    parser.add_argument("--conjunto", default="SIN", choices=["SIN", "JERARQUIA"])
     args = parser.parse_args()
     ds = armar_dataset(args.usuario)
-    k = armar_kernel(args.usuario, args.modelos, args.unique_id)
+    k = armar_kernel(args.usuario, args.modelos, args.conjunto)
     tam = (ds / "proyecto.zip").stat().st_size / 1e6
     print(f"Dataset: {ds} (proyecto.zip {tam:.1f} MB)\nKernel:  {k}")
 
