@@ -33,3 +33,20 @@ def test_ensamble_elige_por_calibracion_no_por_test():
     assert miembros == ["A", "B"]
     out = ensemble.agregar(cv, miembros)
     assert out[ensemble.NOMBRE].iloc[0] == 103
+
+
+def test_correccion_de_sesgo_por_hora_sin_leakage():
+    from forecast_energia.models import combinacion
+
+    ds = pd.date_range("2026-01-01", periods=24 * 60, freq="h")
+    cv = pd.DataFrame({"unique_id": "SIN", "ds": ds, "y": 100.0, "M": 90.0})  # sesgo −10
+    out = combinacion.corregir_sesgo_por_hora(cv, "M", min_dias=5)
+    assert out["M corregido"].iloc[-1] == 100.0  # corrige el sesgo de −10
+    assert out["M corregido"].iloc[: 24 * 6].isna().all()  # 2 días de retraso + 5 de mínimo
+    # Cambiar D−1 y D no altera la corrección del día D
+    dia_d = ds[-1].normalize()
+    alterado = cv.copy()
+    alterado.loc[alterado["ds"] >= dia_d - pd.Timedelta(days=1), "y"] = 1e6
+    out2 = combinacion.corregir_sesgo_por_hora(alterado, "M", min_dias=5)
+    fila = cv["ds"] >= dia_d
+    pd.testing.assert_series_equal(out2.loc[fila, "M corregido"], out.loc[fila, "M corregido"])

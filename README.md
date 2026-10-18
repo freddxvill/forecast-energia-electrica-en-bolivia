@@ -37,15 +37,22 @@ Detalle completo en [`notebooks/01_eda.ipynb`](notebooks/01_eda.ipynb).
 
 Pronóstico del día D con datos hasta D−2 23:00 (la misma anticipación que el predespacho del CNDC). Son 183 días de test (2026-04-17 → 2026-10-16), evaluados con ventana móvil diaria.
 
-| Modelo | MAE (MW) | MAPE | Sesgo (MW) | vs CNDC (Diebold-Mariano) |
+| Modelo | MAE (MW) | MAPE | Cobertura 80/90/95 % | CRPS |
 |---|---|---|---|---|
-| **Ensamble LightGBM + TFT** | **44.0** | **3.29 %** | **+0.3** | mejor, p < 0.001 |
-| TFT | 47.3 | 3.54 % | +1.1 | mejor, p = 0.009 |
-| Pronóstico oficial CNDC (`PREV`) | 54.8 | 4.09 % | +7.1 | — |
-| LightGBM | 55.0 | 4.12 % | −0.5 | empate |
-| Naive semanal | 83.2 | 6.12 % | +1.8 | peor |
+| **Combinado (Ensamble + PREV corregido) + conformal** | **38.3** | **2.86 %** | **79 / 89 / 94** | **14.9** |
+| Ensamble LightGBM + TFT + conformal | 44.0 | 3.29 % | 79 / 89 / 95 | 17.4 |
+| TFT (cuantiles crudos, sin calibrar) | 47.3 | 3.54 % | 49 / 60 / 68 ⚠️ | 23.6 |
+| Pronóstico oficial CNDC (`PREV`) | 54.8 | 4.09 % | — | — |
+| Naive semanal | 83.2 | 6.12 % | — | — |
 
-**−20 % de error frente al pronóstico oficial.** Los miembros del ensamble se eligieron con el periodo de calibración, sin mirar el test. Detalle en [`docs/plan-forecasting.md`](docs/plan-forecasting.md).
+- **−30 % de error frente al pronóstico oficial**, con intervalos cuya cobertura coincide con la nominal **en cada hora del día** (conformal por hora + ACI).
+- **Hallazgo:** el error del CNDC es en gran parte un sesgo sistemático por hora. Corregirlo con su propia historia reciente baja su MAE un 22 %.
+- Los miembros del ensamble se eligieron con el periodo de calibración, sin mirar el test.
+- Detalle y ablaciones en [`docs/plan-forecasting.md`](docs/plan-forecasting.md).
+
+![Cobertura por hora](reports/figures/cp_cobertura_por_hora.png)
+
+![Semana de ejemplo](reports/figures/cp_semana_ejemplo.png)
 
 ## Cómo reproducir
 
@@ -54,6 +61,7 @@ uv sync --all-groups          # entorno completo (Python 3.13)
 uv run poe data               # descarga incremental → data/processed/*.parquet
 uv run poe backtest           # backtest de todos los modelos → artifacts/ + reports/
 uv run poe reporte            # tabla de métricas a partir de artifacts/
+uv run poe intervalos         # intervalos conformal + figuras
 uv run poe test               # tests
 uv run poe lint               # ruff
 ```
@@ -93,8 +101,10 @@ src/forecast_energia/
   analysis.py          análisis exploratorio reutilizable
   evaluation.py        protocolo de backtest, métricas y Diebold-Mariano
   features.py          exógenas futuras (calendario + clima pronosticado 48 h antes)
-  models/              naive, MSTL, LightGBM, NHITS/TFT, ensamble
+  models/              naive, MSTL, LightGBM, NHITS/TFT, ensamble, combinación con PREV
+  conformal.py         split conformal, CQR y ACI (Mondrian por hora)
   pipelines/backtest.py backtest + reporte (CLI)
+  pipelines/intervalos.py intervalos conformal + comparación + figuras (CLI)
   viz.py               estilo de gráficos (paleta validada para daltonismo)
 notebooks/01_eda.ipynb único notebook: EDA
 kaggle/                ejecución de las redes neuronales en Kaggle con GPU
