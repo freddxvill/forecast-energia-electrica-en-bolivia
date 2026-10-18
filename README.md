@@ -2,6 +2,8 @@
 
 Pronóstico **day-ahead** (24 h) de la demanda horaria del **Sistema Interconectado Nacional (SIN)** y de sus 8 departamentos, con **intervalos de predicción con garantía estadística** (Conformal Prediction). Se usan **datos reales** del operador de la red boliviana.
 
+**👉 Demo en vivo: [demanda-energia-electrica-en-bolivia.streamlit.app](https://demanda-energia-electrica-en-bolivia.streamlit.app/)** (pronóstico de mañana, actualizado cada día).
+
 **En una línea:** con la misma anticipación que el pronóstico oficial del CNDC, este proyecto **reduce el error un 30 %** (38.3 vs 54.8 MW) y agrega intervalos que cubren lo prometido hora a hora. Eso equivale a **145 GWh/año menos de energía mal programada** y **41 MW menos de reserva**.
 
 ## El problema
@@ -150,7 +152,9 @@ Pronóstico del día D con datos hasta D−2 23:00 (la misma anticipación que e
 
 ## Demo
 
-- **App (Streamlit):** muestra al abrir el pronóstico de mañana para el SIN con bandas del 80 y 95 %. Pestañas: *Pronóstico* (SIN y departamentos), *Backtest* (real vs modelo vs CNDC), *Incertidumbre*, *Impacto* y *Fuentes y metodología*.
+**[https://demanda-energia-electrica-en-bolivia.streamlit.app/](https://demanda-energia-electrica-en-bolivia.streamlit.app/)**
+
+- **App (Streamlit Community Cloud):** muestra al abrir el pronóstico de mañana para el SIN con bandas del 80 y 95 %. Pestañas: *Pronóstico* (SIN y departamentos), *Backtest* (real vs modelo vs CNDC), *Incertidumbre*, *Impacto* y *Fuentes y metodología*.
 - Streamlit Community Cloud duerme la app tras días sin visitas: la primera carga puede tardar unos segundos.
 - En local: `uv run poe app`.
 
