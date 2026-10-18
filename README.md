@@ -42,7 +42,7 @@ flowchart LR
   E --> M["5 · Modelos<br/>naive, MSTL, LightGBM, NHITS, TFT<br/>ensamble + PREV corregido"]
   M --> U["6 · Intervalos y jerarquía<br/>conformal por hora + ACI<br/>MinT: Σ deptos = SIN"]
   U --> S["7 · Resultados<br/>−30 % MAE vs PREV<br/>cobertura 79/89/94 %"]
-  S --> P["8 · Producción diaria<br/>rama data-inference<br/>FastAPI + Streamlit"]
+  S --> P["8 · Producción diaria<br/>rama data-inference<br/>app Streamlit"]
   P -. cron diario .-> R
 ```
 
@@ -53,7 +53,7 @@ flowchart LR
 5. **Modelos:** backtest diario con corte en D−2 de seis candidatos; el ensamble LightGBM + TFT se eligió con la calibración y se combina con `PREV` corregido por su sesgo por hora.
 6. **Incertidumbre y jerarquía:** conformal por hora del día + ACI, y reconciliación MinT para que los departamentos sumen el SIN.
 7. **Resultados** en 183 días de test que no se tocaron para elegir nada (ver [Resultados](#resultados-del-backtest)).
-8. **Producción:** el mismo esquema corre cada mañana en GitHub Actions y publica el pronóstico para la API y la app.
+8. **Producción:** el mismo esquema corre cada mañana en GitHub Actions y publica el pronóstico que muestra la app.
 
 Versión en imagen para compartir: [`reports/figures/proceso_proyecto.png`](reports/figures/proceso_proyecto.png).
 
@@ -69,9 +69,8 @@ flowchart LR
   P --> D[Pronóstico diario<br/>LightGBM + TFT + PREV corregido<br/>MinT + conformal/ACI]
   D <--> MO[(Rama modelos<br/>LightGBM diario, TFT semanal)]
   D --> R[(Rama data-inference<br/>artefactos vivos)]
-  R --> API[FastAPI<br/>Hugging Face Spaces]
-  R --> F[Streamlit<br/>demo pública]
-  API --> F
+  R --> F[Streamlit Community Cloud<br/>demo pública]
+  R -.-> API[FastAPI<br/>opcional: Docker / HF Spaces]
   GH[GitHub Actions<br/>cron diario + TFT semanal] -.-> D
 ```
 
@@ -79,7 +78,7 @@ flowchart LR
 - **Pronóstico diario (06:00 de Bolivia):** se reentrena LightGBM en CPU y el TFT infiere desde un checkpoint que se reentrena cada semana. El predespacho del CNDC de mañana sale de `precmp`. Si el CNDC todavía no lo publicó, el SIN usa solo el ensamble propio.
 - **Modelos versionados como en CI/CD:** cada reentrenamiento publica el modelo nuevo en la rama **`modelos`** (LightGBM a diario, TFT los domingos) y borra el anterior. La rama tiene un único commit que se reemplaza con force-push, así que siempre guarda solo los modelos vigentes (~7.5 MB).
 - **Rama `data-inference`:** los artefactos que lee la demo (pronóstico, backtest reciente, métricas e histórico de pronósticos emitidos) viven en otra rama de un solo commit que se reemplaza en cada corrida. Así `main` no acumula megas de parquet ni de modelos por día.
-- **Robustez de la demo:** la app consulta la API. Si la API está dormida, lee la rama `data-inference`, y si eso también falla, la copia de `artifacts/demo/` del repo.
+- **La app lee directamente la rama `data-inference`** (raw de GitHub, caché de 10 min), así que ve el pronóstico nuevo cada mañana sin redeploy. Si GitHub no responde, usa la copia de `artifacts/demo/` del repo: nunca queda en blanco.
 
 ## Datos y fuentes
 
@@ -152,9 +151,17 @@ Pronóstico del día D con datos hasta D−2 23:00 (la misma anticipación que e
 ## Demo
 
 - **App (Streamlit):** muestra al abrir el pronóstico de mañana para el SIN con bandas del 80 y 95 %. Pestañas: *Pronóstico* (SIN y departamentos), *Backtest* (real vs modelo vs CNDC), *Incertidumbre*, *Impacto* y *Fuentes y metodología*.
-- **API (FastAPI):** `GET /forecast?unidad=SIN&fecha=AAAA-MM-DD` (cuantiles 80/90/95), `GET /backtest`, `GET /metrics` y `GET /health`. Documentación interactiva en `/docs`.
-- Los servicios gratuitos se duermen por inactividad: la primera carga puede tardar unos segundos. La app nunca queda en blanco gracias a sus respaldos.
-- Para correrlas en local: `uv run poe app` y `uv run poe api`.
+- Streamlit Community Cloud duerme la app tras días sin visitas: la primera carga puede tardar unos segundos.
+- En local: `uv run poe app`.
+
+### Alternativa: API REST (FastAPI)
+
+El repo incluye una API que sirve los mismos pronósticos para integrarlos en otros sistemas. **No está desplegada públicamente**; se puede levantar en local o en cualquier servicio con Docker:
+
+- Endpoints: `GET /forecast?unidad=SIN&fecha=AAAA-MM-DD` (cuantiles 80/90/95), `GET /backtest`, `GET /metrics` y `GET /health`. Documentación interactiva en `/docs`.
+- **Local:** `uv run poe api` → http://localhost:8000/docs.
+- **Docker / Hugging Face Spaces:** el `Dockerfile` (puerto 7860) sirve para un Space con SDK Docker. Con la variable `FORECAST_DEMO_URL=https://raw.githubusercontent.com/freddxvill/forecast-energia-electrica-en-bolivia/data-inference/artifacts/demo` lee el pronóstico del día sin redeploy.
+- Si se despliega, la app puede usarla como fuente principal configurando el secret `API_URL` en Streamlit; sin él, la app lee la rama `data-inference` directamente.
 
 ## Cómo reproducir
 
@@ -239,7 +246,7 @@ src/forecast_energia/
   pipelines/pronostico.py pronóstico diario de producción (CLI)
   api/main.py             FastAPI: /forecast, /backtest, /metrics, /health
 app/streamlit_app.py      demo pública (Streamlit, sin torch)
-Dockerfile                imagen de la API para Hugging Face Spaces
+Dockerfile                imagen de la API (opcional: Docker / Hugging Face Spaces)
 .github/workflows/        CI, pronóstico diario y reentrenamiento semanal del TFT
 notebooks/01_eda.ipynb    único notebook: EDA
 kaggle/                   ejecución de las redes neuronales en Kaggle con GPU
