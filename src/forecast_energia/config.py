@@ -65,9 +65,12 @@ DEPARTAMENTOS: tuple[Departamento, ...] = (
 DEPARTAMENTO_CODIGOS = [d.codigo for d in DEPARTAMENTOS]
 
 # --- Open-Meteo -----------------------------------------------------------------------
-# La Previous Runs API entrega, para cada hora, el valor más reciente y el pronóstico
-# emitido N días antes (`<var>_previous_day1`). Esto permite entrenar con el clima que
-# realmente se conocía al pronosticar el día siguiente, sin leakage.
+# La Previous Runs API entrega, para cada hora, el valor más reciente y el pronóstico hecho
+# N días antes de esa hora (`<var>_previous_dayN`, lead fijo de N × 24 h). Para el día D el
+# corte es D−2 23:00, así que solo `_previous_day2` (corridas iniciadas ≤ el corte) está libre
+# de leakage: `_previous_day1` usaría corridas del día D−1, posteriores al corte.
+CLIMA_DIAS_ANTELACION = 2
+CLIMA_SUFIJO_PRONOSTICO = f"_d{CLIMA_DIAS_ANTELACION}"
 OPEN_METEO_PREVIOUS_RUNS_URL = "https://previous-runs-api.open-meteo.com/v1/forecast"
 CLIMA_VARIABLES = [
     "temperature_2m",

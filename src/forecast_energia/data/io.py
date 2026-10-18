@@ -25,7 +25,7 @@ def cargar_generacion() -> pd.DataFrame:
 
 
 def cargar_clima() -> pd.DataFrame:
-    """Clima horario por departamento (observado y pronosticado el día anterior `*_d1`)."""
+    """Clima horario por departamento (observado y pronosticado 48 h antes, `*_d2`)."""
     return _leer("clima_horario")
 
 

@@ -70,3 +70,6 @@ data-offline = { cmd = "python -m forecast_energia.data.build --offline --sin-cl
 test = { cmd = "pytest", help = "Corre los tests" }
 lint = { cmd = "ruff check .", help = "Lint" }
 fmt = { cmd = "ruff format .", help = "Formatea el código" }
+backtest = { cmd = "python -m forecast_energia.pipelines.backtest", help = "Backtest local de los modelos (ver --help)" }
+reporte = { cmd = "python -m forecast_energia.pipelines.backtest --solo-reporte", help = "Tabla de métricas desde artifacts/" }
+kaggle-preparar = { cmd = "python kaggle/preparar.py", help = "Arma dataset + kernel GPU para Kaggle (--usuario <user>)" }

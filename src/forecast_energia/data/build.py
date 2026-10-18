@@ -9,7 +9,7 @@ Salidas (formato largo de Nixtla: `unique_id, ds, y`, con `ds` = inicio de la ho
     demanda_horaria.parquet     8 departamentos + SIN (MW): `y` conciliado con TOT,
                                 `y_medido` tal como lo publica el CNDC, `imputado`
     generacion_horaria.parquet  TOT, TERMO, HIDRO, SOLAR, EOL, BAGAZO, RENO, PREV (MW)
-    clima_horario.parquet       clima observado y pronosticado el día anterior (`*_d1`)
+    clima_horario.parquet       clima observado y pronosticado 48 h antes (`*_d2`)
     calidad.json                faltantes, imputación y chequeos de coherencia
 """
 

@@ -19,3 +19,6 @@ data/raw/
 .ruff_cache/
 .pytest_cache/
 lightning_logs/
+
+# Paquetes armados para Kaggle (se regeneran con kaggle/preparar.py)
+kaggle/_build/

@@ -14,7 +14,7 @@ El CNDC (Comité Nacional de Despacho de Carga) programa cada día cuánta gener
 |---|---|---|---|
 | [API pública del CNDC](https://www.cndc.bo/wp-json/cndc/v1) `rt/demanda` | Demanda (MW) por departamento | 15 min | 2024-03-01 |
 | [API pública del CNDC](https://www.cndc.bo/wp-json/cndc/v1) `rt/generacion` | Generación por tecnología + pronóstico oficial `PREV` | 15 min | 2024-03-01 |
-| [Open-Meteo Previous Runs](https://open-meteo.com/en/docs/previous-runs-api) | Clima de las 8 capitales: observado y **pronosticado el día anterior** (sin leakage) | 1 h | 2024-03-01 |
+| [Open-Meteo Previous Runs](https://open-meteo.com/en/docs/previous-runs-api) | Clima de las 8 capitales: observado y **pronosticado 48 h antes** (sin leakage) | 1 h | 2024-03-01 |
 | [`holidays`](https://pypi.org/project/holidays/) | Feriados nacionales y departamentales de Bolivia | día | — |
 
 ## Hallazgos del EDA
@@ -33,11 +33,27 @@ Detalle completo en [`notebooks/01_eda.ipynb`](notebooks/01_eda.ipynb).
 
 ![Clima](reports/figures/eda_clima_temperatura.png)
 
+## Resultados del backtest
+
+Pronóstico del día D con datos hasta D−2 23:00 (la misma anticipación que el predespacho del CNDC). Son 183 días de test (2026-04-17 → 2026-10-16), evaluados con ventana móvil diaria.
+
+| Modelo | MAE (MW) | MAPE | Sesgo (MW) | vs CNDC (Diebold-Mariano) |
+|---|---|---|---|---|
+| **Ensamble LightGBM + TFT** | **44.0** | **3.29 %** | **+0.3** | mejor, p < 0.001 |
+| TFT | 47.3 | 3.54 % | +1.1 | mejor, p = 0.009 |
+| Pronóstico oficial CNDC (`PREV`) | 54.8 | 4.09 % | +7.1 | — |
+| LightGBM | 55.0 | 4.12 % | −0.5 | empate |
+| Naive semanal | 83.2 | 6.12 % | +1.8 | peor |
+
+**−20 % de error frente al pronóstico oficial.** Los miembros del ensamble se eligieron con el periodo de calibración, sin mirar el test. Detalle en [`docs/plan-forecasting.md`](docs/plan-forecasting.md).
+
 ## Cómo reproducir
 
 ```bash
 uv sync --all-groups          # entorno completo (Python 3.13)
 uv run poe data               # descarga incremental → data/processed/*.parquet
+uv run poe backtest           # backtest de todos los modelos → artifacts/ + reports/
+uv run poe reporte            # tabla de métricas a partir de artifacts/
 uv run poe test               # tests
 uv run poe lint               # ruff
 ```
@@ -46,8 +62,22 @@ Salidas de `poe data` (formato largo de Nixtla `unique_id, ds, y`, con `ds` = in
 
 - `demanda_horaria.parquet`: 8 departamentos + `SIN` (MW). `y` está conciliado con la generación total (Σ deptos = `TOT`), `y_medido` es el valor publicado por el CNDC e `imputado` marca las horas reparadas.
 - `generacion_horaria.parquet`: `TOT`, `TERMO`, `HIDRO`, `SOLAR`, `EOL`, `BAGAZO`, `RENO`, `PREV` (MW).
-- `clima_horario.parquet`: clima por departamento; las columnas `*_d1` son el pronóstico emitido el día anterior.
+- `clima_horario.parquet`: clima por departamento; las columnas `*_d2` son el pronóstico hecho 48 h antes de cada hora (el único libre de leakage con el corte en D−2).
 - `calidad.json`: faltantes, imputación y chequeos de coherencia.
+
+### Redes neuronales en Kaggle (GPU gratis)
+
+NHITS y TFT son lentos en CPU. `kaggle/` arma un dataset privado (código + datos) y un kernel con GPU T4:
+
+```bash
+uv run poe kaggle-preparar --usuario <usuario> --modelos nhits tft
+cd kaggle/_build/dataset && kaggle datasets create -p .   # o `datasets version -p . -m "..."`
+cd ../kernel && kaggle kernels push -p .
+kaggle kernels output <usuario>/forecast-energia-backtest -p kaggle/_build/salida
+# copiar salida/artifacts/backtest/SIN/{nhits,tft}.parquet a artifacts/backtest/SIN/ y correr `poe reporte`
+```
+
+En Windows conviene exportar `PYTHONIOENCODING=utf-8` antes de usar el CLI de Kaggle, y ejecutarlo desde dentro de la carpeta (`-p .`).
 
 ## Estructura
 
@@ -61,9 +91,14 @@ src/forecast_energia/
   data/build.py        pipeline de datos (CLI)
   data/io.py           lectura de datasets procesados
   analysis.py          análisis exploratorio reutilizable
-  evaluation.py        métricas de error
+  evaluation.py        protocolo de backtest, métricas y Diebold-Mariano
+  features.py          exógenas futuras (calendario + clima pronosticado 48 h antes)
+  models/              naive, MSTL, LightGBM, NHITS/TFT, ensamble
+  pipelines/backtest.py backtest + reporte (CLI)
   viz.py               estilo de gráficos (paleta validada para daltonismo)
 notebooks/01_eda.ipynb único notebook: EDA
+kaggle/                ejecución de las redes neuronales en Kaggle con GPU
+artifacts/backtest/    pronósticos del backtest (insumo de conformal y de la demo)
 reports/figures/       figuras del README
 tests/                 pytest (con respuestas reales de la API como fixtures)
 docs/                  plan del proyecto

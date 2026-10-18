@@ -2,8 +2,8 @@
 
 Para cada variable se guardan dos versiones:
 - `<var>`: el mejor valor disponible (análisis o pronóstico más reciente). Sirve para el EDA.
-- `<var>_d1`: el pronóstico emitido el día anterior. Es la versión **sin leakage** que se
-  usa como exógena futura en los modelos day-ahead.
+- `<var>_d2`: el pronóstico hecho 48 h antes de esa hora. Es la versión **sin leakage** que
+  se usa como exógena futura (ver `config.CLIMA_DIAS_ANTELACION`).
 """
 
 from __future__ import annotations
@@ -22,7 +22,8 @@ log = logging.getLogger(__name__)
 
 @retry(stop=stop_after_attempt(4), wait=wait_exponential(multiplier=1, min=2, max=30), reraise=True)
 def _fetch(lat: float, lon: float, start: date, end: date) -> dict:
-    hourly = config.CLIMA_VARIABLES + [f"{v}_previous_day1" for v in config.CLIMA_VARIABLES]
+    n = config.CLIMA_DIAS_ANTELACION
+    hourly = config.CLIMA_VARIABLES + [f"{v}_previous_day{n}" for v in config.CLIMA_VARIABLES]
     params = {
         "latitude": lat,
         "longitude": lon,
@@ -40,7 +41,8 @@ def parse_respuesta(data: dict, unique_id: str) -> pd.DataFrame:
     """Convierte la respuesta de Open-Meteo a un DataFrame con una fila por hora."""
     df = pd.DataFrame(data["hourly"])
     df["ds"] = pd.to_datetime(df.pop("time"))
-    df = df.rename(columns={f"{v}_previous_day1": f"{v}_d1" for v in config.CLIMA_VARIABLES})
+    n, sufijo = config.CLIMA_DIAS_ANTELACION, config.CLIMA_SUFIJO_PRONOSTICO
+    df = df.rename(columns={f"{v}_previous_day{n}": f"{v}{sufijo}" for v in config.CLIMA_VARIABLES})
     df.insert(0, "unique_id", unique_id)
     return df
 
