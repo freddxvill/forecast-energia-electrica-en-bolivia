@@ -4,6 +4,9 @@ Cada endpoint diario (`rt/demanda`, `rt/generacion`) devuelve, por serie, 96 val
 instantáneos de potencia (MW) registrados por SCADA cada 15 minutos. El valor `i`
 corresponde a `fecha + (i + 1) * 15 min`, es decir, de 00:15 a 24:00. Lo validamos
 contra la curva horaria oficial de `rt/curva-dia`: el índice 3 coincide con la hora 01:00.
+
+También descarga los precios del mercado eléctrico (`dashboard/precios`, `cm-diario`), que se
+usan para valorizar el impacto del pronóstico.
 """
 
 from __future__ import annotations
@@ -159,3 +162,93 @@ def _escribir_cache(endpoint: str, nuevos: pd.DataFrame) -> None:
             .reset_index(drop=True)
         )
         grupo.to_parquet(path, index=False)
+
+
+# --- Precios -------------------------------------------------------------------------------
+
+COLUMNAS_PRECIOS = ["precio_energia", "precio_potencia", "precio_transporte", "precio_monomico"]
+
+
+@retry(stop=stop_after_attempt(4), wait=wait_exponential(multiplier=1, min=1, max=20), reraise=True)
+def _get_json(session: requests.Session, endpoint: str, **params) -> dict:
+    resp = session.get(f"{config.CNDC_API_BASE}/{endpoint}", params=params, timeout=30)
+    resp.raise_for_status()
+    return resp.json()
+
+
+def parse_precios_mensuales(raw: dict) -> pd.DataFrame:
+    """Precios monómicos mensuales: `mes` (el día 1) y los precios de `COLUMNAS_PRECIOS`.
+
+    Unidades del CNDC: energía, transporte y monómico en USD/MWh; potencia en USD/kW-mes.
+    """
+    df = pd.DataFrame(raw.get("monomicos", {}).get("serie", []))
+    if df.empty:
+        return pd.DataFrame(columns=["mes", *COLUMNAS_PRECIOS])
+    df["mes"] = pd.to_datetime({"year": df["anio"], "month": df["mes"], "day": 1})
+    return df[["mes", *COLUMNAS_PRECIOS]].sort_values("mes").reset_index(drop=True)
+
+
+def parse_cm_diario(raw: dict, ultimo: date) -> pd.DataFrame:
+    """Costo marginal medio diario (USD/MWh): `fecha`, `costo_marginal`.
+
+    La API da las fechas como "dd/mm", en orden cronológico y sin año. El año se infiere
+    hacia atrás desde `ultimo` (la fecha de la descarga): si una fecha queda después de la
+    siguiente, es que se cruzó un cambio de año.
+    """
+    fechas: list[date] = []
+    anio = ultimo.year
+    siguiente = ultimo
+    for txt in reversed(raw.get("fechas", [])):
+        dia, mes = (int(x) for x in txt.split("/"))
+        f = date(anio, mes, dia)
+        if f > siguiente:
+            anio -= 1
+            f = date(anio, mes, dia)
+        fechas.append(f)
+        siguiente = f
+    valores = list(reversed(raw.get("valores", [])))
+    df = pd.DataFrame({"fecha": pd.to_datetime(fechas), "costo_marginal": valores})
+    return df.sort_values("fecha").reset_index(drop=True)
+
+
+def descargar_precios(inicio: date, hoy: date | None = None) -> tuple[pd.DataFrame, pd.DataFrame]:
+    """Precios mensuales desde `inicio` y el costo marginal diario publicado.
+
+    Cada pedido a `dashboard/precios` trae 12 meses, así que alcanza con el último mes
+    disponible más un pedido por año anterior (diciembre).
+    """
+    hoy = hoy or date.today()
+    session = _session()
+    partes = [parse_precios_mensuales(_get_json(session, config.ENDPOINT_PRECIOS, modo="mes"))]
+    for anio in range(inicio.year, hoy.year):
+        raw = _get_json(session, config.ENDPOINT_PRECIOS, modo="mes", anio=anio, mes=12)
+        partes.append(parse_precios_mensuales(raw))
+        time.sleep(config.CNDC_REQUEST_PAUSE_S)
+    mensuales = pd.concat(partes, ignore_index=True).drop_duplicates("mes", keep="first")
+    mensuales = mensuales[mensuales["mes"] >= pd.Timestamp(inicio).replace(day=1)]
+    mensuales = mensuales.sort_values("mes").reset_index(drop=True)
+    cm = parse_cm_diario(_get_json(session, config.ENDPOINT_CM_DIARIO, dias=1000), hoy)
+    log.info(
+        "Precios: %d meses (%s → %s); costo marginal diario: %d días",
+        len(mensuales),
+        mensuales["mes"].min().date(),
+        mensuales["mes"].max().date(),
+        len(cm),
+    )
+    return mensuales, cm
+
+
+def acumular(nuevo: pd.DataFrame, existente: pd.DataFrame | None, clave: str) -> pd.DataFrame:
+    """Une con lo ya guardado (los datos nuevos tienen prioridad).
+
+    El costo marginal diario solo se publica para los últimos ~200 días: acumularlo en cada
+    descarga conserva la historia.
+    """
+    if existente is None or existente.empty:
+        return nuevo.reset_index(drop=True)
+    return (
+        pd.concat([existente, nuevo], ignore_index=True)
+        .drop_duplicates(clave, keep="last")
+        .sort_values(clave)
+        .reset_index(drop=True)
+    )

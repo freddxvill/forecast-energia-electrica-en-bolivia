@@ -29,6 +29,12 @@ CNDC_REFETCH_LAST_DAYS = 3
 ENDPOINT_DEMANDA = "rt/demanda"
 ENDPOINT_GENERACION = "rt/generacion"
 
+# Precios (para valorizar el impacto, Fase 7). `dashboard/precios` devuelve los precios
+# monómicos de los 12 meses que terminan en el mes pedido; `cm-diario`, el costo marginal medio
+# diario de los últimos N días (solo hay ~200 días publicados, con fechas "dd/mm" sin año).
+ENDPOINT_PRECIOS = "dashboard/precios"
+ENDPOINT_CM_DIARIO = "cm-diario"
+
 # Series de generación del endpoint rt/generacion.
 GENERACION_SERIES = ["TOT", "TERMO", "HIDRO", "SOLAR", "EOL", "BAGAZO", "RENO", "PREV"]
 # PREV = pronóstico oficial del CNDC (predespacho), benchmark a batir.
@@ -89,6 +95,52 @@ HORIZONTE_H = 48
 HORAS_DIA_OBJETIVO = (25, 48)  # horizontes (inclusive) que caen en el día D
 # Fechas fijas para que los resultados sean reproducibles aunque lleguen datos nuevos.
 CALIB_INICIO = "2026-01-16"  # ~3 meses de calibración conformal
-TEST_INICIO = "2026-04-17"  # ~6 meses de test (hasta el último dato)
+TEST_INICIO = "2026-04-17"  # 6 meses de test (183 días)
+# Último día del test reportado. Los días posteriores que lleguen con `poe data` forman el
+# periodo "prospectivo": datos que nadie miró al diseñar los modelos (validación honesta).
+TEST_FIN = "2026-10-16"
 NIVELES = (80, 90, 95)  # niveles de los intervalos de predicción (%)
 ESTACIONALIDAD_MASE = 168  # naive semanal como escala de MASE
+
+# --- Impacto de negocio (Fase 7) ---------------------------------------------------------
+# Supuestos para valorizar los desvíos evitados. Los precios del mercado (energía, potencia,
+# costo marginal) salen de la API del CNDC; lo de abajo no está en la API y se documenta con
+# su fuente. Cada valor tiene un rango (bajo/central/alto) para el análisis de sensibilidad.
+SUPUESTOS_IMPACTO: dict = {
+    "heat_rate_mmbtu_mwh": {
+        "bajo": 9.0,
+        "central": 10.5,
+        "alto": 12.0,
+        "descripcion": "Consumo específico de la unidad térmica que ajusta el desvío",
+        "fuente": (
+            "Rango típico de turbinas a gas de ciclo abierto (el parque marginal del SIN). "
+            "Chequeo con datos del CNDC: costo marginal mediano / precio regulado del gas "
+            "(lo calcula pipelines.impacto)."
+        ),
+    },
+    "precio_gas_oportunidad_usd_mmbtu": {
+        "bajo": 5.0,
+        "central": 6.5,
+        "alto": 8.0,
+        "descripcion": "Costo de oportunidad del gas: precio de exportación a Brasil",
+        "fuente": (
+            "Contratos de YPFB con compradores brasileños indexados al Brent, ~6–7 USD/MMBtu "
+            "(OilPrice.com, 2025); históricamente 4–6 USD/MMBtu."
+        ),
+    },
+    "precio_gas_regulado_usd_mpc": {
+        "central": 1.30,
+        "descripcion": "Precio regulado del gas para generación termoeléctrica",
+        "fuente": "DS 26037 (2000), vigente; ~1.3 USD/MMBtu (1 MPC ≈ 1.03 MMBtu).",
+    },
+    "mmbtu_por_mpc": {
+        "central": 1.03,
+        "descripcion": "Poder calorífico del gas natural boliviano",
+        "fuente": "Valor típico del gas natural seco (~1 030 BTU/pie³).",
+    },
+    "nivel_reserva": {
+        "central": 95,
+        "descripcion": "% de los desvíos al alza (demanda > pronóstico) que cubre la reserva",
+        "fuente": "Criterio del análisis (cuantil 95 unilateral = límite superior del IC 90 %).",
+    },
+}

@@ -8,12 +8,35 @@ Pronóstico **day-ahead** (24 h) de la demanda horaria del **Sistema Interconect
 
 El CNDC (Comité Nacional de Despacho de Carga) programa cada día cuánta generación térmica, hidroeléctrica y de reserva se despacha para el día siguiente. Un pronóstico puntual sin medida de incertidumbre obliga a elegir entre dos males: **sobredimensionar la reserva** (más gas quemado y más costo) o **arriesgar déficit**. Este proyecto entrega cuantiles calibrados que buscan superar al pronóstico oficial del CNDC (`PREV`).
 
+## El impacto
+
+Comparación con el pronóstico oficial del CNDC en 183 días de test (2026-04-17 → 2026-10-16), con la misma anticipación (datos hasta D−2):
+
+| KPI | Pronóstico oficial (`PREV`) | Este proyecto | Mejora |
+|---|---|---|---|
+| Error medio (MAE) | 54.8 MW | 38.3 MW | **−30 %** |
+| Energía mal programada | 480 GWh/año | 336 GWh/año | **−145 GWh/año** |
+| Reserva al alza para cubrir el 95 % de los desvíos | 116 MW fijos | 75 MW de media, ajustada a cada hora | **−41 MW** (−27 MW a igual cobertura) |
+| Intervalo del 90 % | no publica | cubre el 89.4 % de las horas (peor hora 84 %) | incertidumbre utilizable |
+
+**Valor estimado: entre 3 y 14 M USD/año**, según cómo se valore la energía:
+- **Tarifa regulada:** precio de energía del CNDC, ~21 USD/MWh con el gas subsidiado. Los desvíos evitados valen ~3.1 M USD/año.
+- **Costo de oportunidad del gas exportable:** 6.5–13.9 M USD/año. Cada MWh térmico consume ~10.5 MMBtu de gas que podría venderse a Brasil a ~6.5 USD/MMBtu.
+- **Reserva liberada:** al precio de potencia, entre 3.5 y 5.4 M USD/año adicionales.
+
+Son órdenes de magnitud, no ahorros contables. Los supuestos, sus fuentes y la sensibilidad están en [`reports/impacto.md`](reports/impacto.md). Además, el pronóstico es automático y reproducible: una tarea diaria de CI en vez de un proceso manual.
+
+![Reserva por hora](reports/figures/impacto_reserva_por_hora.png)
+
+La reserva se ajusta a la hora: de madrugada alcanza con ~50 MW y entre las 10 y las 18 h, cuando el error del pronóstico es mayor, hacen falta ~100 MW. Una regla fija paga todo el día la reserva de la peor hora.
+
 ## Datos
 
 | Fuente | Qué | Resolución | Desde |
 |---|---|---|---|
 | [API pública del CNDC](https://www.cndc.bo/wp-json/cndc/v1) `rt/demanda` | Demanda (MW) por departamento | 15 min | 2024-03-01 |
 | [API pública del CNDC](https://www.cndc.bo/wp-json/cndc/v1) `rt/generacion` | Generación por tecnología + pronóstico oficial `PREV` | 15 min | 2024-03-01 |
+| [API pública del CNDC](https://www.cndc.bo/wp-json/cndc/v1) `dashboard/precios`, `cm-diario` | Precios de energía y potencia (mensual) y costo marginal (diario), para valorizar el impacto | mes / día | 2024-03 |
 | [Open-Meteo Previous Runs](https://open-meteo.com/en/docs/previous-runs-api) | Clima de las 8 capitales: observado y **pronosticado 48 h antes** (sin leakage) | 1 h | 2024-03-01 |
 | [`holidays`](https://pypi.org/project/holidays/) | Feriados nacionales y departamentales de Bolivia | día | — |
 
@@ -71,6 +94,7 @@ uv run poe reporte            # tabla de métricas a partir de artifacts/
 uv run poe intervalos         # intervalos conformal + figuras
 uv run poe backtest --conjunto JERARQUIA --modelos naive lgbm   # 9 series (TFT en Kaggle)
 uv run poe jerarquia          # reconciliación SIN → departamentos + intervalos
+uv run poe impacto            # KPIs de negocio vs PREV → reports/impacto.{json,md}
 uv run poe test               # tests
 uv run poe lint               # ruff
 ```
@@ -80,6 +104,7 @@ Salidas de `poe data` (formato largo de Nixtla `unique_id, ds, y`, con `ds` = in
 - `demanda_horaria.parquet`: 8 departamentos + `SIN` (MW). `y` está conciliado con la generación total (Σ deptos = `TOT`), `y_medido` es el valor publicado por el CNDC e `imputado` marca las horas reparadas.
 - `generacion_horaria.parquet`: `TOT`, `TERMO`, `HIDRO`, `SOLAR`, `EOL`, `BAGAZO`, `RENO`, `PREV` (MW).
 - `clima_horario.parquet`: clima por departamento; las columnas `*_d2` son el pronóstico hecho 48 h antes de cada hora (el único libre de leakage con el corte en D−2).
+- `precios_mensuales.parquet` y `costo_marginal_diario.parquet`: precios del CNDC (USD/MWh; potencia en USD/kW-mes). El costo marginal se acumula entre descargas porque la API solo publica los últimos ~200 días.
 - `calidad.json`: faltantes, imputación y chequeos de coherencia.
 
 ### Redes neuronales en Kaggle (GPU gratis)

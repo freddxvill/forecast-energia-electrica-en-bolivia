@@ -64,7 +64,9 @@ def _nombres(nombre: str, niveles) -> list[str]:
 
 
 def _destino(cv: pd.DataFrame, solo_test: bool) -> np.ndarray:
-    return (cv["periodo"] == "test").to_numpy() if solo_test else np.ones(len(cv), bool)
+    if not solo_test:
+        return np.ones(len(cv), bool)
+    return cv["periodo"].isin(["test", "prospectivo"]).to_numpy()
 
 
 def split_conformal(

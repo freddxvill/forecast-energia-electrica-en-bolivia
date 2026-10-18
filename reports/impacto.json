@@ -1,0 +1,173 @@
+{
+  "periodo": {
+    "test": [
+      "2026-04-17",
+      "2026-10-16"
+    ],
+    "dias_test": 183,
+    "horas_evaluadas": 4392,
+    "metodo_produccion": "Combinado + ACI",
+    "referencia": "PREV (predespacho oficial del CNDC)"
+  },
+  "precision": [
+    {
+      "pronostico": "PREV (CNDC)",
+      "MWh_error_anio": 480480.92390710383,
+      "MAE_MW": 54.84942053734063,
+      "MAPE_pct": 4.090892810036232,
+      "delta_MAE_MW": 0.0,
+      "MWh_evitados": 0.0,
+      "MWh_evitados_anio": 0.0,
+      "delta_MAE_pct": 0.0
+    },
+    {
+      "pronostico": "PREV corregido por hora",
+      "MWh_error_anio": 374413.4422472678,
+      "MAE_MW": 42.741260530510026,
+      "MAPE_pct": 3.1857237378388907,
+      "delta_MAE_MW": -12.108160006830602,
+      "MWh_evitados": 53179.03875,
+      "MWh_evitados_anio": 106067.48165983606,
+      "delta_MAE_pct": -22.07527424758764,
+      "p_DM_vs_PREV": 1.5401855878074875e-24
+    },
+    {
+      "pronostico": "Ensamble (LightGBM + TFT)",
+      "MWh_error_anio": 385147.9911594585,
+      "MAE_MW": 43.96666565747244,
+      "MAPE_pct": 3.2849485683242556,
+      "delta_MAE_MW": -10.882754879868187,
+      "MWh_evitados": 47797.059432381066,
+      "MWh_evitados_anio": 95332.93274764529,
+      "delta_MAE_pct": -19.841148317071788,
+      "p_DM_vs_PREV": 3.001918737007282e-07
+    },
+    {
+      "pronostico": "Combinado (Ensamble + PREV corregido)",
+      "MWh_error_anio": 335834.6654940242,
+      "MAE_MW": 38.337290581509606,
+      "MAPE_pct": 2.857623762700999,
+      "delta_MAE_MW": -16.51212995583102,
+      "MWh_evitados": 72521.27476600981,
+      "MWh_evitados_anio": 144646.2584130797,
+      "delta_MAE_pct": -30.104474749354594,
+      "p_DM_vs_PREV": 3.8217033903980595e-28
+    }
+  ],
+  "economico": {
+    "MWh_evitados_anio": 144646.2584130797,
+    "tarifa_regulada": {
+      "precio_energia_medio_usd_mwh": 21.17391350530009,
+      "usd_anio": 3062727.3645038344,
+      "fuente": "CNDC dashboard/precios: precio de energía mensual (monómico)"
+    },
+    "costo_marginal": {
+      "precio_medio_usd_mwh": 18.62871791032102,
+      "usd_anio": 2694574.34476066,
+      "pct_horas_con_dato": 96.17486338797814,
+      "fuente": "CNDC cm-diario: costo marginal medio diario"
+    },
+    "costo_gas": {
+      "bajo": {
+        "heat_rate_mmbtu_mwh": 9.0,
+        "precio_gas_usd_mmbtu": 5.0,
+        "costo_usd_mwh": 45.0,
+        "usd_anio": 6509081.628588586
+      },
+      "central": {
+        "heat_rate_mmbtu_mwh": 10.5,
+        "precio_gas_usd_mmbtu": 6.5,
+        "costo_usd_mwh": 68.25,
+        "usd_anio": 9872107.13669269
+      },
+      "alto": {
+        "heat_rate_mmbtu_mwh": 12.0,
+        "precio_gas_usd_mmbtu": 8.0,
+        "costo_usd_mwh": 96.0,
+        "usd_anio": 13886040.807655651
+      }
+    },
+    "chequeo_heat_rate": {
+      "costo_marginal_mediano_usd_mwh": 17.601,
+      "precio_gas_regulado_usd_mmbtu": 1.2621359223300972,
+      "heat_rate_implicito_max": 13.94540769230769
+    }
+  },
+  "reserva": {
+    "nivel_pct": 95,
+    "precio_potencia_usd_kw_mes": 11.009927868852458,
+    "reglas": {
+      "PREV + regla fija": {
+        "reserva_media_MW": 116.09325000000013,
+        "reserva_max_MW": 116.09325000000013,
+        "cobertura_pct": 95.76502732240438,
+        "n": 4392
+      },
+      "PREV + conformal por hora": {
+        "reserva_media_MW": 80.66165869763206,
+        "reserva_max_MW": 227.99000000000024,
+        "cobertura_pct": 95.08196721311475,
+        "n": 4392
+      },
+      "Combinado + conformal por hora + ACI": {
+        "reserva_media_MW": 74.97278893526281,
+        "reserva_max_MW": 168.05109246134543,
+        "cobertura_pct": 94.30783242258653,
+        "n": 4392,
+        "ahorro_MW_vs_PREV + regla fija": 41.12046106473731,
+        "ahorro_usd_anio_vs_PREV + regla fija": 5432799.723080565,
+        "ahorro_MW_vs_PREV + regla fija oráculo (misma cobertura)": 26.835849498252358,
+        "ahorro_usd_anio_vs_PREV + regla fija oráculo (misma cobertura)": 3545529.2073016665
+      },
+      "PREV + regla fija oráculo (misma cobertura)": {
+        "reserva_media_MW": 101.80863843351517,
+        "reserva_max_MW": 101.80863843351528,
+        "cobertura_pct": 94.30783242258653,
+        "n": 4392
+      }
+    }
+  },
+  "confiabilidad": {
+    "cobertura_80": 79.00728597449908,
+    "cobertura_90": 89.41256830601093,
+    "cobertura_95": 93.9207650273224,
+    "ancho_90_MW": 161.53998240320152,
+    "cobertura_90_peor_hora": 84.15300546448088,
+    "peor_hora": 19,
+    "cobertura_90_peor_mes": 84.30555555555556,
+    "peor_mes": "2026-06",
+    "dentro_de_2pp": true
+  },
+  "prospectivo": null,
+  "supuestos": {
+    "heat_rate_mmbtu_mwh": {
+      "bajo": 9.0,
+      "central": 10.5,
+      "alto": 12.0,
+      "descripcion": "Consumo específico de la unidad térmica que ajusta el desvío",
+      "fuente": "Rango típico de turbinas a gas de ciclo abierto (el parque marginal del SIN). Chequeo con datos del CNDC: costo marginal mediano / precio regulado del gas (lo calcula pipelines.impacto)."
+    },
+    "precio_gas_oportunidad_usd_mmbtu": {
+      "bajo": 5.0,
+      "central": 6.5,
+      "alto": 8.0,
+      "descripcion": "Costo de oportunidad del gas: precio de exportación a Brasil",
+      "fuente": "Contratos de YPFB con compradores brasileños indexados al Brent, ~6–7 USD/MMBtu (OilPrice.com, 2025); históricamente 4–6 USD/MMBtu."
+    },
+    "precio_gas_regulado_usd_mpc": {
+      "central": 1.3,
+      "descripcion": "Precio regulado del gas para generación termoeléctrica",
+      "fuente": "DS 26037 (2000), vigente; ~1.3 USD/MMBtu (1 MPC ≈ 1.03 MMBtu)."
+    },
+    "mmbtu_por_mpc": {
+      "central": 1.03,
+      "descripcion": "Poder calorífico del gas natural boliviano",
+      "fuente": "Valor típico del gas natural seco (~1 030 BTU/pie³)."
+    },
+    "nivel_reserva": {
+      "central": 95,
+      "descripcion": "% de los desvíos al alza (demanda > pronóstico) que cubre la reserva",
+      "fuente": "Criterio del análisis (cuantil 95 unilateral = límite superior del IC 90 %)."
+    }
+  }
+}

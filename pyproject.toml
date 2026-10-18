@@ -74,4 +74,5 @@ backtest = { cmd = "python -m forecast_energia.pipelines.backtest", help = "Back
 reporte = { cmd = "python -m forecast_energia.pipelines.backtest --solo-reporte", help = "Tabla de métricas desde artifacts/" }
 intervalos = { cmd = "python -m forecast_energia.pipelines.intervalos", help = "Intervalos conformal + figuras desde artifacts/" }
 jerarquia = { cmd = "python -m forecast_energia.pipelines.jerarquia", help = "Reconciliación SIN → departamentos + intervalos" }
+impacto = { cmd = "python -m forecast_energia.pipelines.impacto", help = "KPIs de negocio vs PREV → reports/impacto.{json,md}" }
 kaggle-preparar = { cmd = "python kaggle/preparar.py", help = "Arma dataset + kernel GPU para Kaggle (--usuario <user>)" }

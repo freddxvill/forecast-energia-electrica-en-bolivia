@@ -39,6 +39,26 @@ def test_particion_y_etiquetas():
     assert p.etiqueta(ds).tolist() == ["train", "calibracion", "test"]
 
 
+def test_periodo_prospectivo_despues_de_test_fin():
+    p = E.Particion(
+        pd.Timestamp("2026-01-16"),
+        pd.Timestamp("2026-04-17"),
+        pd.Timestamp("2026-10-20"),
+        pd.Timestamp("2026-10-16"),
+    )
+    assert p.dias_test == 183
+    assert p.dias_prospectivo == 4
+    assert p.n_ventanas() == 91 + 183 + 4
+    ds = pd.Series(pd.to_datetime(["2026-10-16 23:00", "2026-10-17 00:00"]))
+    assert p.etiqueta(ds).tolist() == ["test", "prospectivo"]
+
+
+def test_particion_por_defecto_fija_el_fin_del_test():
+    p = E.particion_por_defecto(pd.Timestamp("2026-11-30 23:00"))
+    assert p.fin == pd.Timestamp("2026-11-30")
+    assert p.fin_test == pd.Timestamp("2026-10-16")
+
+
 def test_particion_por_defecto_excluye_dia_incompleto():
     assert E.particion_por_defecto(pd.Timestamp("2026-10-16 23:00")).fin == pd.Timestamp(
         "2026-10-16"

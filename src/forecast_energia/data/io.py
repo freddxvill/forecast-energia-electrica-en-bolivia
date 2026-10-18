@@ -29,6 +29,16 @@ def cargar_clima() -> pd.DataFrame:
     return _leer("clima_horario")
 
 
+def cargar_precios_mensuales() -> pd.DataFrame:
+    """Precios monómicos mensuales del CNDC (USD/MWh; potencia en USD/kW-mes)."""
+    return _leer("precios_mensuales")
+
+
+def cargar_costo_marginal_diario() -> pd.DataFrame:
+    """Costo marginal medio diario del CNDC (USD/MWh)."""
+    return _leer("costo_marginal_diario")
+
+
 def a_ancho(df: pd.DataFrame, valores: str = "y") -> pd.DataFrame:
     """Formato largo → ancho: una columna por `unique_id`, índice `ds`."""
     return df.pivot(index="ds", columns="unique_id", values=valores).sort_index()

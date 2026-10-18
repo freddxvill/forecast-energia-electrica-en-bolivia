@@ -70,13 +70,15 @@ def _ruta(conjunto: str, familia: str) -> Path:
 def correr(conjunto: str, familias: list[str]) -> None:
     panel, observado, particion = preparar_panel(CONJUNTOS[conjunto])
     log.info(
-        "%s (%d series): %d ventanas (calibración %d días, test %d días hasta %s)",
+        "%s (%d series): %d ventanas (calibración %d días, test %d días hasta %s, "
+        "prospectivo %d días)",
         conjunto,
         panel["unique_id"].nunique(),
         particion.n_ventanas(),
         particion.dias_calibracion,
         particion.dias_test,
-        particion.fin.date(),
+        particion.fin_test.date(),
+        particion.dias_prospectivo,
     )
     for familia in familias:
         t0 = time.time()

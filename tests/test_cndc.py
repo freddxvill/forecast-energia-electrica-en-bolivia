@@ -62,3 +62,33 @@ def test_convencion_horaria_coincide_con_curva_oficial(generacion_raw):
     horas = pd.Timestamp(FECHA) + pd.to_timedelta(np.arange(1, 25), unit="h")
     mae = np.nanmean(np.abs(tot.reindex(horas).to_numpy() - np.asarray(curva["generacion"])))
     assert mae < 10, f"MAE {mae:.1f} MW: la convención de timestamps no coincide"
+
+
+def test_parse_precios_mensuales():
+    df = cndc.parse_precios_mensuales(_cargar("cndc_dashboard_precios_2026-09.json"))
+    assert len(df) == 12
+    assert df["mes"].min() == pd.Timestamp("2025-10-01")
+    assert df["mes"].max() == pd.Timestamp("2026-09-01")
+    sep = df.set_index("mes").loc["2026-09-01"]
+    assert sep["precio_energia"] == pytest.approx(22.7222)
+    assert sep["precio_potencia"] == pytest.approx(10.2299)
+
+
+def test_parse_cm_diario_infiere_el_anio():
+    df = cndc.parse_cm_diario(_cargar("cndc_cm-diario_10.json"), date(2026, 10, 17))
+    assert df["fecha"].tolist() == list(pd.date_range("2026-10-06", "2026-10-15"))
+    assert df["costo_marginal"].iloc[-1] == pytest.approx(15.529)
+
+
+def test_parse_cm_diario_cruza_el_cambio_de_anio():
+    raw = {"fechas": ["30/12", "31/12", "01/01", "02/01"], "valores": [1, 2, 3, 4]}
+    df = cndc.parse_cm_diario(raw, date(2027, 1, 3))
+    assert df["fecha"].dt.year.tolist() == [2026, 2026, 2027, 2027]
+    assert df["costo_marginal"].tolist() == [1, 2, 3, 4]
+
+
+def test_acumular_conserva_la_historia_y_prioriza_lo_nuevo():
+    viejo = pd.DataFrame({"fecha": pd.to_datetime(["2026-01-01", "2026-01-02"]), "v": [1, 2]})
+    nuevo = pd.DataFrame({"fecha": pd.to_datetime(["2026-01-02", "2026-01-03"]), "v": [9, 3]})
+    out = cndc.acumular(nuevo, viejo, "fecha")
+    assert out["v"].tolist() == [1, 9, 3]

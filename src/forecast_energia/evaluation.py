@@ -22,11 +22,20 @@ from forecast_energia import config
 
 @dataclass(frozen=True)
 class Particion:
-    """Periodos del backtest: calibración (para conformal) y test (para reportar)."""
+    """Periodos del backtest: calibración (conformal), test (reportar) y prospectivo.
+
+    El test termina en `test_fin` (fijo, para que las cifras reportadas no cambien al llegar
+    datos nuevos). Los días entre `test_fin` y `fin` son el periodo "prospectivo".
+    """
 
     calib_inicio: pd.Timestamp
     test_inicio: pd.Timestamp
     fin: pd.Timestamp  # último día evaluado (inclusive)
+    test_fin: pd.Timestamp | None = None  # None: el test llega hasta `fin`
+
+    @property
+    def fin_test(self) -> pd.Timestamp:
+        return self.fin if self.test_fin is None else min(self.test_fin, self.fin)
 
     @property
     def dias_calibracion(self) -> int:
@@ -34,7 +43,11 @@ class Particion:
 
     @property
     def dias_test(self) -> int:
-        return (self.fin - self.test_inicio).days + 1
+        return (self.fin_test - self.test_inicio).days + 1
+
+    @property
+    def dias_prospectivo(self) -> int:
+        return (self.fin - self.fin_test).days
 
     def n_ventanas(self, desde: pd.Timestamp | None = None) -> int:
         """Ventanas diarias de backtest desde `desde` (por defecto, desde la calibración)."""
@@ -42,19 +55,25 @@ class Particion:
         return (self.fin - desde).days + 1
 
     def etiqueta(self, ds: pd.Series) -> pd.Series:
-        """'calibracion' | 'test' | 'train' según la fecha de cada pronóstico."""
+        """'train' | 'calibracion' | 'test' | 'prospectivo' según la fecha de cada pronóstico."""
         dia = pd.to_datetime(ds).dt.normalize()
         out = pd.Series("train", index=ds.index)
         out[dia >= self.calib_inicio] = "calibracion"
         out[dia >= self.test_inicio] = "test"
+        out[dia > self.fin_test] = "prospectivo"
         return out
 
 
 def particion_por_defecto(ultimo_ds: pd.Timestamp) -> Particion:
-    """Partición con las fechas de `config`. El test llega hasta el último día completo."""
+    """Partición con las fechas de `config`. Se evalúa hasta el último día completo."""
     ultimo = pd.Timestamp(ultimo_ds)
     fin = ultimo.normalize() if ultimo.hour == 23 else ultimo.normalize() - pd.Timedelta(days=1)
-    return Particion(pd.Timestamp(config.CALIB_INICIO), pd.Timestamp(config.TEST_INICIO), fin)
+    return Particion(
+        pd.Timestamp(config.CALIB_INICIO),
+        pd.Timestamp(config.TEST_INICIO),
+        fin,
+        pd.Timestamp(config.TEST_FIN),
+    )
 
 
 def recortar_para_backtest(df: pd.DataFrame, particion: Particion) -> pd.DataFrame:

@@ -10,6 +10,8 @@ Salidas (formato largo de Nixtla: `unique_id, ds, y`, con `ds` = inicio de la ho
                                 `y_medido` tal como lo publica el CNDC, `imputado`
     generacion_horaria.parquet  TOT, TERMO, HIDRO, SOLAR, EOL, BAGAZO, RENO, PREV (MW)
     clima_horario.parquet       clima observado y pronosticado 48 h antes (`*_d2`)
+    precios_mensuales.parquet   precios monómicos del CNDC (energía, potencia, transporte)
+    costo_marginal_diario.parquet  costo marginal medio diario (se acumula entre descargas)
     calidad.json                faltantes, imputación y chequeos de coherencia
 """
 
@@ -78,6 +80,17 @@ def procesar_generacion(raw15: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame
     return gen_h, gen15
 
 
+def guardar_precios(mensuales: pd.DataFrame, cm: pd.DataFrame) -> None:
+    """Guarda los precios, acumulando con lo ya descargado."""
+    for nombre, df, clave in [
+        ("precios_mensuales", mensuales, "mes"),
+        ("costo_marginal_diario", cm, "fecha"),
+    ]:
+        path = config.PROCESSED_DIR / f"{nombre}.parquet"
+        existente = pd.read_parquet(path) if path.exists() else None
+        cndc.acumular(df, existente, clave).to_parquet(path, index=False)
+
+
 def _a_mb(path) -> float:
     return round(path.stat().st_size / 1e6, 3)
 
@@ -123,6 +136,9 @@ def main(argv: list[str] | None = None) -> None:
         df.sort_values(["unique_id", "ds"]).to_parquet(
             config.PROCESSED_DIR / f"{nombre}.parquet", index=False
         )
+
+    if not args.offline:
+        guardar_precios(*cndc.descargar_precios(args.start))
 
     sin_df = dem_h[dem_h["unique_id"] == config.SIN_ID].set_index("ds")
     sin, sin_medido = sin_df["y"], sin_df["y_medido"]
