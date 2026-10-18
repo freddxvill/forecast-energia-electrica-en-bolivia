@@ -12,6 +12,7 @@ Streamlit Cloud la instale solo con `app/requirements.txt`.
 
 from __future__ import annotations
 
+import base64
 import io
 import json
 import os
@@ -25,6 +26,7 @@ import streamlit as st
 RAIZ = Path(__file__).resolve().parents[1]
 DEMO = RAIZ / "artifacts" / "demo"
 FIGURAS = RAIZ / "reports" / "figures"
+BANNER = RAIZ / "app" / "assets" / "banner_mapa_sin_bolivia_v2.webp"
 REPO_URL = "https://github.com/freddxvill/forecast-energia-electrica-en-bolivia"
 DEMO_URL_DEFECTO = "https://raw.githubusercontent.com/freddxvill/forecast-energia-electrica-en-bolivia/data-inference/artifacts/demo"
 PUNTO = "Pronóstico"
@@ -371,6 +373,17 @@ def pestaña_fuentes() -> None:
 
 
 def main() -> None:
+    # Una URL de datos conserva el WebP; st.image convierte los archivos locales a JPEG.
+    banner_b64 = base64.b64encode(BANNER.read_bytes()).decode("ascii")
+    st.image(
+        f"data:image/webp;base64,{banner_b64}",
+        width="stretch",
+        alt=(
+            "Mapa de Bolivia con límites departamentales de la cartografía del OEP "
+            "y una red eléctrica que conecta ocho departamentos; "
+            "Pando aparece sin conexión."
+        ),
+    )
     st.title("⚡ Demanda eléctrica de Bolivia: pronóstico probabilístico")
     st.markdown(
         "Pronóstico **day-ahead** de la demanda horaria del Sistema Interconectado Nacional y sus "
