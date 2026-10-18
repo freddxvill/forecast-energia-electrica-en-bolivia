@@ -25,6 +25,7 @@ import streamlit as st
 RAIZ = Path(__file__).resolve().parents[1]
 DEMO = RAIZ / "artifacts" / "demo"
 FIGURAS = RAIZ / "reports" / "figures"
+REPO_URL = "https://github.com/freddxvill/forecast-energia-electrica-en-bolivia"
 DEMO_URL_DEFECTO = "https://raw.githubusercontent.com/freddxvill/forecast-energia-electrica-en-bolivia/demo-data/artifacts/demo"
 PUNTO = "Pronóstico"
 NIVELES = (80, 90, 95)
@@ -306,6 +307,69 @@ def pestaña_impacto(m: dict) -> None:
     )
 
 
+CNDC = "[CNDC](https://www.cndc.bo)"
+OPEN_METEO = "[Open-Meteo Previous Runs](https://open-meteo.com/en/docs/previous-runs-api)"
+# (fuente, qué se usa, resolución, desde)
+DATOS = [
+    (f"{CNDC} `rt/demanda`", "Demanda (MW) de los 8 departamentos", "15 min", "2024-03-01"),
+    (
+        f"{CNDC} `rt/generacion`",
+        "Generación por tecnología y pronóstico oficial `PREV`",
+        "15 min",
+        "2024-03-01",
+    ),
+    (f"{CNDC} `precmp`", "Predespacho horario de mañana (`PREV` en producción)", "1 h", "~30 días"),
+    (
+        f"{CNDC} `dashboard/precios`, `cm-diario`",
+        "Precios de energía y potencia; costo marginal diario",
+        "mes / día",
+        "2024-03",
+    ),
+    (OPEN_METEO, "Clima de las 8 capitales pronosticado 48 h antes", "1 h", "2024-03-01"),
+    ("[`holidays`](https://pypi.org/project/holidays/)", "Feriados de Bolivia", "día", "—"),
+]
+TABLA_DATOS = "\n".join(
+    ["| Fuente | Qué se usa | Resolución | Desde |", "|---|---|---|---|"]
+    + [f"| {' | '.join(fila)} |" for fila in DATOS]
+)
+
+FUENTES = f"""
+**Datos**
+
+{TABLA_DATOS}
+
+- La API del CNDC (`https://www.cndc.bo/wp-json/cndc/v1`) es pública y sin clave, pero **no está
+  documentada oficialmente**: los endpoints y su convención horaria se validaron a mano (por
+  ejemplo, contra `rt/curva-dia`). El cron diario descarga los datos nuevos cada mañana.
+- Open-Meteo: [datos del tiempo por Open-Meteo.com](https://open-meteo.com/), licencia
+  [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). Se usa el pronóstico hecho 48 h antes
+  de cada hora porque es lo único que se conocía en el momento del corte (D−2).
+- `holidays`: se excluye el 17 de octubre (Día de la Dignidad Nacional), que la librería marca como
+  feriado pero en el que la demanda no cae.
+- Supuestos del impacto: precio regulado del gas para generación (DS 26037), precio de exportación
+  del gas a Brasil (~6–7 USD/MMBtu, OilPrice.com 2025) y heat rate típico de turbinas de ciclo
+  abierto, acotado con el costo marginal del CNDC.
+
+**Metodología, en cinco pasos**
+
+1. **Limpieza:** los `-1` de la API son faltantes; se interpolan huecos de hasta 1 h y los
+   departamentos se concilian con la generación total (la suma cuadra con el SIN).
+2. **Pronóstico del día D con datos hasta D−2 23:00**, la misma anticipación que el predespacho.
+3. **Modelos:** LightGBM y TFT globales sobre las 9 series; el SIN se combina con el pronóstico
+   oficial corregido por su sesgo por hora.
+4. **Coherencia:** reconciliación MinT para que la suma de los departamentos sea el SIN.
+5. **Incertidumbre:** conformal prediction por hora del día + ACI, con los errores de los últimos
+   91 días.
+
+Más detalle: [glosario de métodos]({REPO_URL}/blob/main/docs/glosario.md) y
+[código y reproducción]({REPO_URL}).
+"""
+
+
+def pestaña_fuentes() -> None:
+    st.markdown(FUENTES)
+
+
 def main() -> None:
     st.title("⚡ Demanda eléctrica de Bolivia: pronóstico probabilístico")
     st.markdown(
@@ -314,7 +378,7 @@ def main() -> None:
         "**−30 % de error frente al pronóstico oficial** en 6 meses de test."
     )
     m = cargar_metricas()
-    tabs = st.tabs(["Pronóstico", "Backtest", "Incertidumbre", "Impacto"])
+    tabs = st.tabs(["Pronóstico", "Backtest", "Incertidumbre", "Impacto", "Fuentes y metodología"])
     with tabs[0]:
         pestaña_pronostico()
     with tabs[1]:
@@ -323,6 +387,8 @@ def main() -> None:
         pestaña_incertidumbre(m)
     with tabs[3]:
         pestaña_impacto(m)
+    with tabs[4]:
+        pestaña_fuentes()
 
 
 main()
