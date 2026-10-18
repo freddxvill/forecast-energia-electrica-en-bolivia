@@ -67,3 +67,23 @@ def test_sesgo_reciente_coincide_con_la_correccion_del_backtest():
     ultimo = out[out["ds"] >= dia_d].set_index("ds")
     esperado = ultimo["M"] + sesgo.reindex(ultimo.index.hour).to_numpy()
     np.testing.assert_allclose(ultimo["M corregido"], esperado)
+
+
+def test_lightgbm_guardado_pronostica_igual_y_reemplaza_al_anterior(tmp_path, monkeypatch):
+    monkeypatch.setattr(ml, "PARAMS", ml.PARAMS | {"n_estimators": 10})
+    rng = np.random.default_rng(0)
+    ds = pd.date_range("2026-01-01", periods=24 * 40 + 48, freq="h")
+    df = pd.DataFrame({"unique_id": "SIN", "ds": ds, "y": 1000 + 100 * np.sin(np.arange(len(ds)))})
+    for col in ml.EXOGENAS:
+        df[col] = rng.normal(size=len(ds))
+    panel, futuro = df.iloc[:-48], df.iloc[-48:].drop(columns="y")
+
+    pred, mlf = ml.pronosticar(panel, futuro)
+    carpeta = tmp_path / "lgbm"
+    carpeta.mkdir()
+    (carpeta / "modelo_viejo.pkl").write_text("viejo")
+    ml.guardar(mlf, carpeta)
+
+    assert not (carpeta / "modelo_viejo.pkl").exists()
+    recargado = ml.predecir(ml.cargar(carpeta), panel, futuro)
+    pd.testing.assert_frame_equal(recargado, pred)

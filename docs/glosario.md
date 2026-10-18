@@ -268,7 +268,7 @@ API gratuita de Open-Meteo que guarda los pronósticos del tiempo tal como se em
 
 ### Checkpoint
 Archivo con los pesos de un modelo ya entrenado, para usarlo sin reentrenar.
-- **Aquí:** el TFT (2.8 MB) se reentrena cada semana y el pronóstico diario lo carga y solo infiere (10 s en CPU, contra 32 min de entrenamiento). Vive en la rama `demo-data`.
+- **Aquí:** el TFT (2.8 MB) se reentrena cada semana y el pronóstico diario lo carga y solo infiere (10 s en CPU, contra 32 min de entrenamiento). LightGBM (4.7 MB) se reentrena y se guarda cada día. Ambos viven en la rama `modelos`, que conserva solo la última versión de cada uno.
 - **Saber más:** [NeuralForecast (`save` / `load`)](https://nixtlaverse.nixtla.io/neuralforecast/).
 
 ### FastAPI

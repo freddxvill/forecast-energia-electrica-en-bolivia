@@ -1,7 +1,8 @@
 name: Reentrenamiento semanal del TFT
 
 # Los domingos reentrena el TFT global (9 series) en CPU con toda la historia y publica el
-# checkpoint en `demo-data`. El pronóstico diario lo usa para inferir sin GPU.
+# checkpoint nuevo en la rama `modelos` (reemplaza al anterior; el LightGBM vigente se conserva).
+# El pronóstico diario lo usa para inferir sin GPU.
 on:
   schedule:
     - cron: "0 6 * * 0"
@@ -11,7 +12,7 @@ permissions:
   contents: write
 
 concurrency:
-  group: demo-data
+  group: artefactos
   cancel-in-progress: false
 
 jobs:
@@ -28,8 +29,8 @@ jobs:
           path: data/raw
           key: cndc-raw-${{ github.run_id }}
           restore-keys: cndc-raw-
-      - run: bash .github/scripts/demo-data.sh restaurar
+      - run: bash .github/scripts/rama-artefactos.sh restaurar modelos
       - run: uv sync --locked --group ml --group neural
       - run: uv run poe data
       - run: uv run poe entrenar-tft
-      - run: bash .github/scripts/demo-data.sh publicar "TFT reentrenado $(date -u +%F)"
+      - run: bash .github/scripts/rama-artefactos.sh publicar modelos "TFT reentrenado $(date -u +%F)"

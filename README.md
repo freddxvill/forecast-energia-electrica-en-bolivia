@@ -42,7 +42,7 @@ flowchart LR
   E --> M["5 · Modelos<br/>naive, MSTL, LightGBM, NHITS, TFT<br/>ensamble + PREV corregido"]
   M --> U["6 · Intervalos y jerarquía<br/>conformal por hora + ACI<br/>MinT: Σ deptos = SIN"]
   U --> S["7 · Resultados<br/>−30 % MAE vs PREV<br/>cobertura 79/89/94 %"]
-  S --> P["8 · Producción diaria<br/>rama demo-data<br/>FastAPI + Streamlit"]
+  S --> P["8 · Producción diaria<br/>rama data-inference<br/>FastAPI + Streamlit"]
   P -. cron diario .-> R
 ```
 
@@ -67,7 +67,8 @@ flowchart LR
   P --> B[Backtest, conformal,<br/>jerarquía, impacto<br/>pipelines/*.py]
   K[Kaggle GPU<br/>NHITS / TFT] --> B
   P --> D[Pronóstico diario<br/>LightGBM + TFT + PREV corregido<br/>MinT + conformal/ACI]
-  D --> R[(Rama demo-data<br/>artefactos vivos)]
+  D <--> MO[(Rama modelos<br/>LightGBM diario, TFT semanal)]
+  D --> R[(Rama data-inference<br/>artefactos vivos)]
   R --> API[FastAPI<br/>Hugging Face Spaces]
   R --> F[Streamlit<br/>demo pública]
   API --> F
@@ -76,8 +77,9 @@ flowchart LR
 
 - **Producción = el mismo esquema evaluado en el backtest.** En los días pasados reproduce exactamente la reconciliación y los intervalos del backtest jerárquico (SIN: MAE 38.1 MW, cobertura 79/89/94 % en test).
 - **Pronóstico diario (06:00 de Bolivia):** se reentrena LightGBM en CPU y el TFT infiere desde un checkpoint que se reentrena cada semana. El predespacho del CNDC de mañana sale de `precmp`. Si el CNDC todavía no lo publicó, el SIN usa solo el ensamble propio.
-- **Rama `demo-data`:** los artefactos que cambian a diario (pronóstico, histórico de pronósticos emitidos y checkpoint) viven en una rama de un solo commit que se reemplaza en cada corrida. Así `main` no acumula megas de parquet por día.
-- **Robustez de la demo:** la app consulta la API. Si la API está dormida, lee la rama `demo-data`, y si eso también falla, la copia de `artifacts/demo/` del repo.
+- **Modelos versionados como en CI/CD:** cada reentrenamiento publica el modelo nuevo en la rama **`modelos`** (LightGBM a diario, TFT los domingos) y borra el anterior. La rama tiene un único commit que se reemplaza con force-push, así que siempre guarda solo los modelos vigentes (~7.5 MB).
+- **Rama `data-inference`:** los artefactos que lee la demo (pronóstico, backtest reciente, métricas e histórico de pronósticos emitidos) viven en otra rama de un solo commit que se reemplaza en cada corrida. Así `main` no acumula megas de parquet ni de modelos por día.
+- **Robustez de la demo:** la app consulta la API. Si la API está dormida, lee la rama `data-inference`, y si eso también falla, la copia de `artifacts/demo/` del repo.
 
 ## Datos y fuentes
 
@@ -243,7 +245,7 @@ notebooks/01_eda.ipynb    único notebook: EDA
 kaggle/                   ejecución de las redes neuronales en Kaggle con GPU
 artifacts/backtest/       pronósticos del backtest por familia de modelos (versionados: las redes salen de Kaggle);
                           los combinados e intervalos se regeneran con `poe reporte`, `poe intervalos`, `poe jerarquia`
-artifacts/demo/           copia de los artefactos de serving (la versión viva está en la rama demo-data)
+artifacts/demo/           copia de los artefactos de serving (la versión viva está en la rama data-inference)
 reports/                  métricas, impacto y figuras del README
 tests/                    pytest (con respuestas reales de la API como fixtures)
 docs/glosario.md          glosario de métodos

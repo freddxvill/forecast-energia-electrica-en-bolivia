@@ -7,9 +7,13 @@ Uso:
 
 Es el mismo esquema que se evaluó en el backtest jerárquico (Fase 6), con el corte en el último
 día completo observado (D−2 23:00 para el día D = mañana):
-1. LightGBM global (9 series), reentrenado en cada corrida (~1 min en CPU).
-2. TFT global desde el checkpoint de `artifacts/modelos/` (inferencia en CPU). Si no hay
-   checkpoint, el ensamble es solo LightGBM.
+1. LightGBM global (9 series), reentrenado en cada corrida (~1 min en CPU). El modelo nuevo
+   reemplaza al anterior en `artifacts/modelos/lgbm_electric/`.
+2. TFT global desde el checkpoint de `artifacts/modelos/tft_electric/` (inferencia en CPU),
+   reentrenado cada semana. Si no hay checkpoint, el ensamble es solo LightGBM.
+
+Los modelos se publican en la rama `modelos` y los artefactos de serving en `data-inference` (ver
+`.github/scripts/rama-artefactos.sh`).
 3. SIN: media del ensamble y el predespacho del CNDC (`precmp`) corregido por hora. Si el
    CNDC todavía no lo publicó, solo el ensamble.
 4. Reconciliación MinT-WLS y conformal por hora + ACI por serie, con los errores de los
@@ -45,7 +49,8 @@ ARTIFACTS = config.ROOT / "artifacts"
 REPORTS = config.ROOT / "reports"
 DEMO = ARTIFACTS / "demo"
 HISTORICO = ARTIFACTS / "historico_pronosticos.parquet"
-CHECKPOINT_TFT = ARTIFACTS / "modelos" / "tft_jerarquia"
+CHECKPOINT_TFT = ARTIFACTS / "modelos" / "tft_electric"
+MODELO_LGBM = ARTIFACTS / "modelos" / "lgbm_electric"
 SERIES = [config.SIN_ID, *config.DEPARTAMENTO_CODIGOS]
 PREV = baselines.NOMBRE_PREV
 PUNTO = "Pronóstico"
@@ -106,8 +111,11 @@ def entrenar_tft(corte: pd.Timestamp | None = None) -> None:
 
 
 def pronosticos_base(panel: pd.DataFrame, fut: pd.DataFrame) -> pd.DataFrame:
-    """LightGBM + TFT (si hay checkpoint) y su ensamble, para las 48 h siguientes al corte."""
-    pred = ml.pronosticar(panel, fut)
+    """LightGBM (reentrenado y guardado) + TFT (si hay checkpoint) y su ensamble, 48 h."""
+    pred, mlf = ml.pronosticar(panel, fut)
+    ml.guardar(mlf, MODELO_LGBM)
+    (MODELO_LGBM / "entrenado_hasta.txt").write_text(str(panel["ds"].max()), encoding="utf-8")
+    log.info("LightGBM entrenado hasta %s → %s", panel["ds"].max(), MODELO_LGBM)
     if (CHECKPOINT_TFT / "configuration.json").exists():
         from forecast_energia.models import neural
 

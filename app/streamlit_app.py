@@ -5,7 +5,7 @@ Uso local:
 
 Fuentes, en orden: la API (`API_URL` en los secrets de Streamlit o en el entorno); si no
 responde (p.ej. el Space de Hugging Face está dormido), los artefactos que el cron diario
-publica en la rama `demo-data` (`DEMO_URL`); y si tampoco, la copia de `artifacts/demo/` del
+publica en la rama `data-inference` (`DEMO_URL`); y si tampoco, la copia de `artifacts/demo/` del
 repo. La demo nunca queda en blanco. Es autocontenida (no importa `forecast_energia`) para que
 Streamlit Cloud la instale solo con `app/requirements.txt`.
 """
@@ -26,7 +26,7 @@ RAIZ = Path(__file__).resolve().parents[1]
 DEMO = RAIZ / "artifacts" / "demo"
 FIGURAS = RAIZ / "reports" / "figures"
 REPO_URL = "https://github.com/freddxvill/forecast-energia-electrica-en-bolivia"
-DEMO_URL_DEFECTO = "https://raw.githubusercontent.com/freddxvill/forecast-energia-electrica-en-bolivia/demo-data/artifacts/demo"
+DEMO_URL_DEFECTO = "https://raw.githubusercontent.com/freddxvill/forecast-energia-electrica-en-bolivia/data-inference/artifacts/demo"
 PUNTO = "Pronóstico"
 NIVELES = (80, 90, 95)
 UNIDADES = [
@@ -47,7 +47,7 @@ DIAS_ES = ["lunes", "martes", "miércoles", "jueves", "viernes", "sábado", "dom
 st.set_page_config(page_title="Demanda eléctrica de Bolivia", page_icon="⚡", layout="wide")
 
 
-# --- Datos: API, rama demo-data o copia local ---------------------------------------------------
+# --- Datos: API, rama data-inference o copia local ---------------------------------------------
 
 
 def _ajuste(nombre: str, defecto: str = "") -> str:
@@ -59,11 +59,11 @@ def _ajuste(nombre: str, defecto: str = "") -> str:
 
 
 def _archivo(nombre: str) -> tuple[bytes, str]:
-    """Artefacto desde la rama `demo-data` (actualizada a diario) o, si falla, el local."""
+    """Artefacto desde la rama `data-inference` (actualizada a diario) o, si falla, el local."""
     try:
         r = requests.get(f"{_ajuste('DEMO_URL', DEMO_URL_DEFECTO)}/{nombre}", timeout=8)
         r.raise_for_status()
-        return r.content, "GitHub (demo-data)"
+        return r.content, "GitHub (data-inference)"
     except requests.RequestException:
         return (DEMO / nombre).read_bytes(), "copia local"
 

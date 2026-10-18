@@ -12,6 +12,9 @@
 
 from __future__ import annotations
 
+import shutil
+from pathlib import Path
+
 import lightgbm as lgb
 import pandas as pd
 from mlforecast import MLForecast
@@ -59,27 +62,49 @@ def nivel(panel: pd.DataFrame) -> pd.Series:
     )
 
 
-def pronosticar(panel: pd.DataFrame, futuro: pd.DataFrame) -> pd.DataFrame:
-    """Entrena con toda la historia de `panel` y pronostica las filas de `futuro` (≤ 48 h).
+def entrenar(panel: pd.DataFrame) -> MLForecast:
+    """Entrena con toda la historia de `panel` (con las exógenas de `features.agregar_exogenas`)."""
+    hist = panel.sort_values(["unique_id", "ds"]).reset_index(drop=True)
+    hist = hist.assign(nivel=nivel(hist)).dropna(subset=["nivel"])
+    return crear().fit(
+        hist.assign(y=hist["y"] / hist["nivel"])[["unique_id", "ds", "y", *EXOGENAS]],
+        static_features=[],
+    )
 
-    Ambos deben traer las exógenas de `features.agregar_exogenas`; `futuro` sin `y`. El nivel
-    de las horas futuras usa solo datos observados (está desplazado 48 h).
+
+def predecir(mlf: MLForecast, panel: pd.DataFrame, futuro: pd.DataFrame) -> pd.DataFrame:
+    """Pronostica las filas de `futuro` (≤ 48 h) con un modelo entrenado hasta el final de `panel`.
+
+    `futuro` trae las exógenas y no trae `y`. El nivel de las horas futuras usa solo datos
+    observados de `panel` (está desplazado 48 h).
     """
     todo = pd.concat([panel, futuro], ignore_index=True)
     todo = todo.sort_values(["unique_id", "ds"]).reset_index(drop=True)
     todo["nivel"] = nivel(todo)
-    es_futuro = todo["y"].isna()
-    hist = todo[~es_futuro].dropna(subset=["nivel"])
-    fut = todo[es_futuro]
-    mlf = crear().fit(
-        hist.assign(y=hist["y"] / hist["nivel"])[["unique_id", "ds", "y", *EXOGENAS]],
-        static_features=[],
-    )
+    fut = todo[todo["y"].isna()]
     h = int(fut.groupby("unique_id").size().max())
     pred = mlf.predict(h=h, X_df=fut[["unique_id", "ds", *EXOGENAS]])
     pred = pred.merge(fut[["unique_id", "ds", "nivel"]], on=["unique_id", "ds"], how="inner")
     pred[NOMBRE] = pred[NOMBRE] * pred.pop("nivel")
     return pred
+
+
+def pronosticar(panel: pd.DataFrame, futuro: pd.DataFrame) -> tuple[pd.DataFrame, MLForecast]:
+    """Entrena con toda la historia de `panel` y pronostica `futuro`; devuelve también el modelo."""
+    mlf = entrenar(panel)
+    return predecir(mlf, panel, futuro), mlf
+
+
+def guardar(mlf: MLForecast, carpeta: Path) -> None:
+    """Reemplaza el modelo guardado en `carpeta`: borra el anterior y deja solo el nuevo."""
+    if carpeta.exists():
+        shutil.rmtree(carpeta)
+    carpeta.mkdir(parents=True)
+    mlf.save(carpeta)
+
+
+def cargar(carpeta: Path) -> MLForecast:
+    return MLForecast.load(carpeta)
 
 
 def backtest(panel: pd.DataFrame, particion: Particion) -> pd.DataFrame:

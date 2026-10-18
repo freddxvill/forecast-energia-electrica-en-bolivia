@@ -1,8 +1,10 @@
 name: Pronóstico diario
 
-# Todos los días a las 06:00 de Bolivia: descarga el día nuevo del CNDC y el clima, emite el
-# pronóstico de mañana (LightGBM + TFT desde el checkpoint + predespacho corregido, MinT y
-# conformal) y publica los artefactos en la rama `demo-data`, de donde los leen la API y la app.
+# Todos los días a las 06:00 de Bolivia: descarga el día nuevo del CNDC y el clima, reentrena
+# LightGBM, emite el pronóstico de mañana (LightGBM + TFT desde el checkpoint + predespacho
+# corregido, MinT y conformal) y publica:
+#   - en la rama `modelos`, el LightGBM nuevo (reemplaza al anterior) junto al TFT vigente;
+#   - en la rama `data-inference`, los artefactos que leen la API y la app.
 on:
   schedule:
     - cron: "0 10 * * *"
@@ -12,7 +14,7 @@ permissions:
   contents: write
 
 concurrency:
-  group: demo-data
+  group: artefactos
   cancel-in-progress: false
 
 jobs:
@@ -31,9 +33,11 @@ jobs:
           path: data/raw
           key: cndc-raw-${{ github.run_id }}
           restore-keys: cndc-raw-
-      - run: bash .github/scripts/demo-data.sh restaurar
+      - run: bash .github/scripts/rama-artefactos.sh restaurar modelos
+      - run: bash .github/scripts/rama-artefactos.sh restaurar data-inference
       # torch sale del índice CPU de PyTorch (ver pyproject.toml): sin CUDA.
       - run: uv sync --locked --group ml --group neural
       - run: uv run poe data
       - run: uv run poe pronostico
-      - run: bash .github/scripts/demo-data.sh publicar "Pronóstico diario $(date -u +%F)"
+      - run: bash .github/scripts/rama-artefactos.sh publicar modelos "LightGBM reentrenado $(date -u +%F)"
+      - run: bash .github/scripts/rama-artefactos.sh publicar data-inference "Pronóstico diario $(date -u +%F)"
