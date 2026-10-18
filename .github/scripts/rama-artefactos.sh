@@ -36,7 +36,7 @@ case "$ACCION" in
     git config user.name "github-actions[bot]"
     git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
     git checkout -q --orphan "$RAMA-tmp"
-    git rm -rq --cached .
+    git read-tree --empty  # índice vacío: solo entran las rutas de la rama (main queda intacto)
     for ruta in $RUTAS; do
       if [ -e "$ruta" ]; then git add -f "$ruta"; fi
     done
